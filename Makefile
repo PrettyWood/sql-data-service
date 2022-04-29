@@ -8,6 +8,10 @@ install:
 	poetry install
 	poetry run pre-commit install
 
+.PHONY: dev
+dev:
+	poetry run uvicorn sql_data_service.main:app --reload
+
 .PHONY: test
 test:
 	poetry run pytest --cov src --cov-report=term-missing --cov-report=xml
