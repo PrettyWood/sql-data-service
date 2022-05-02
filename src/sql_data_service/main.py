@@ -1,52 +1,30 @@
-from dataclasses import dataclass
 from typing import Any
 
-import asyncpg
 from fastapi import FastAPI
-from pydantic import BaseModel, SecretStr
-from weaverbird.pipeline import PipelineWithVariables
 
 from . import __version__
-from .translate_pipeline_sql import translate_pipeline_sql
+from .models import SQLQueryDefinition
 
 app = FastAPI()
 
 
-class PostgreSQLConnection(BaseModel):
-    host: str
-    port: int
-    user: str | None = None
-    password: SecretStr | None = None
-    database: str | None = None
-    charset: str | None = None
-    connect_timeout: int | None = None
-
-
-class PostgreSQLQueryDefinition(BaseModel):
-    connection: PostgreSQLConnection
-    pipeline: PipelineWithVariables
-
-
-Datarows = list[dict[str, Any]]
-
-
 @app.get("/")
-def get_status():
+def get_status() -> dict[str, str]:
     return {"status": "OK", "version": __version__}
 
 
 @app.post("/preview")
-async def get_preview(query_def: PostgreSQLQueryDefinition) -> Datarows:
-    conn = await asyncpg.connect(
-        host=query_def.connection.host,
-        port=query_def.connection.port,
-        user=query_def.connection.user,
-        password=query_def.connection.password.get_secret_value(),
-        database=query_def.connection.database,
-    )
+async def get_preview(query_def: SQLQueryDefinition) -> list[dict[str, Any]]:
+    match query_def.connection.dialect:
+        case "postgresql":
+            from .postgresql.models import PostgreSQLConnectionConfig
+            from .postgresql.preview import get_preview_postgresql
 
-    sql_query = await translate_pipeline_sql(query_def.pipeline, conn, dialect="postgres")
-    records = await conn.fetch(sql_query)
+            assert isinstance(query_def.connection.config, PostgreSQLConnectionConfig)
+            return await get_preview_postgresql(query_def.connection.config, query_def.pipeline)
+        case "mysql":  # pragma: no cover
+            from .mysql.models import MySQLConnectionConfig
+            from .mysql.preview import get_preview_mysql
 
-    await conn.close()
-    return [dict(r) for r in records]
+            assert isinstance(query_def.connection.config, MySQLConnectionConfig)
+            return await get_preview_mysql(query_def.connection.config, query_def.pipeline)

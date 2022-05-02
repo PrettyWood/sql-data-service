@@ -1,11 +1,13 @@
+from typing import cast
+
 import asyncpg
 from pypika import Query
 from weaverbird.pipeline import PipelineWithVariables
 from weaverbird.pipeline.steps import DomainStep
 
 
-async def translate_pipeline_sql(
-    pipeline: PipelineWithVariables, conn: asyncpg.Connection, dialect="postgres"
+async def translate_pipeline_postgresql(
+    pipeline: PipelineWithVariables, conn: asyncpg.Connection
 ) -> str:
     query = Query()
     metadata = {}  # domain -> metadata on all columns
@@ -13,14 +15,14 @@ async def translate_pipeline_sql(
     for step in pipeline.steps:
         match step.name:
             case "domain":
-                step: DomainStep
+                assert isinstance(step, DomainStep)
                 all_columns = await get_all_columns(step.domain, conn)
                 metadata[step.domain] = {col_name: True for col_name in all_columns}
                 query = query.from_(step.domain).select(*all_columns)
             case _:  # pragma: no cover
                 raise NotImplementedError("Step {step.name!r} is not yet implemented")
 
-    return query.get_sql()
+    return cast(str, query.get_sql())
 
 
 async def get_all_columns(table: str, conn: asyncpg.Connection) -> list[str]:

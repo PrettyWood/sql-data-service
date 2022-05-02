@@ -1,0 +1,28 @@
+# This allows to run the playground with a pre-populated MongoDB backend
+version: '3'
+services:
+  postgresql:
+    image: postgres:14.2
+    ports:
+      - 5432:5432
+    volumes:
+      - ./__fixtures__/init-postgresql/:/docker-entrypoint-initdb.d/:ro
+      - ./__fixtures__/data/:/data/:ro
+    environment:
+      POSTGRES_USER: pika_user
+      POSTGRES_PASSWORD: pika_pw
+      POSTGRES_DB: pika_db
+  mysql:
+    image: mysql:5.7.37
+    environment:
+      MYSQL_RANDOM_ROOT_PASSWORD: 1
+      MYSQL_USER: pika_user
+      MYSQL_PASSWORD: pika_pw
+      MYSQL_DATABASE: pika_db
+    ports:
+      - 3306:3306
+    volumes:
+      - ./__fixtures__/init-mysql/:/docker-entrypoint-initdb.d/:ro
+      - ./__fixtures__/data/:/data/:ro
+    command:
+      - '--secure_file_priv='
