@@ -5,6 +5,9 @@ import pytest_asyncio
 
 from sql_data_service.models import MySQLConnectionConfig, PostgreSQLConnectionConfig
 
+# MYSQL
+###############################################################################
+
 
 @pytest.fixture
 def mysql_connection_config() -> MySQLConnectionConfig:
@@ -26,11 +29,15 @@ async def is_mysql_ready(mysql_connection_config: MySQLConnectionConfig) -> bool
             await get_connection(mysql_connection_config)
             return True
         except Exception:
-            print(f"Could not connect to MySQL server. Retrying...")
+            print("Could not connect to MySQL server. Retrying...")
             retry += 1
             await asyncio.sleep(1)
 
     return False
+
+
+# POSTGRESQL
+###############################################################################
 
 
 @pytest.fixture
@@ -53,7 +60,7 @@ async def is_postgresql_ready(postgresql_connection_config: PostgreSQLConnection
             await get_connection(postgresql_connection_config)
             return True
         except Exception:
-            print(f"Could not connect to PostgreSQL server. Retrying...")
+            print("Could not connect to PostgreSQL server. Retrying...")
             retry += 1
             await asyncio.sleep(1)
 
