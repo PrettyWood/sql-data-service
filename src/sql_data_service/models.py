@@ -6,6 +6,7 @@ from weaverbird.pipeline import PipelineWithVariables
 SQLDialect = Literal["mysql", "postgresql"]
 DataRows = list[dict[str, Any]]
 
+
 # MySQL
 ###############################################################################
 class MySQLConnectionConfig(BaseModel):

@@ -1,36 +1,57 @@
-from typing import Any, Callable
+# from typing_extensions import Self
+from typing import Mapping, Sequence, TypeVar
 
-from typing_extensions import Self
+from pypika import Query
+
+Self = TypeVar("Self", bound="SQLTranslator")
 
 
 class SQLTranslator:
-    def __init__(self, table_columns: dict[str, list[str]] | None = None) -> None:
-        self.table_columns: dict[str, list[str]] = table_columns or {}
-        self.query_executor: Callable[[str], list[dict[str, Any]]] = None
+    def __init__(self: Self, *, tables_columns: Mapping[str, Sequence[str]] | None = None) -> None:
+        self.tables_columns: Mapping[str, Sequence[str]] = tables_columns or {}
+        self.query = Query()
 
-    def domain(self, table_name: str) -> Self:
-        if table_name not in self.table_columns:
-            self.table_columns[table_name] = self.fetch_all_columns(table_name)
+    def domain(self: Self, *, table_name: str) -> Self:
+        print(f"Selecting all columns for table {table_name!r}")
+
+        try:
+            table_columns = self.tables_columns[table_name]
+        except KeyError:
+            raise KeyError(f"All columns are unknown for table {table_name!r}")
+        else:
+            self.query = self.query.from_(table_name).select(*table_columns)
+
         return self
 
-    async def fetch_all_columns(self, table_name: str) -> list[str]:
-        get_columns_query = f"""
-            SELECT column_name
-            FROM information_schema.columns
-            WHERE table_name = '{table_name}'
-            ORDER BY ordinal_position
-        """
-        if self.query_executor is None:
-            raise Exception(
-                f"Need to set a query executor to retrieve all columns for table {table_name!r}"
-            )
-
-        # columns_records = [{'column_name': 'username'}, {'column_name': 'age'}, {'column_name': 'city'}]
-        columns_records = self.query_executor(get_columns_query)
-        return [r["column_name"] for r in columns_records]
+    def get_query(self: Self) -> str:
+        return self.query.get_sql()
 
 
-################################ POSTGRES
+sql_translator = SQLTranslator(tables_columns={"users": ["username", "age", "city"]})
+assert (
+    sql_translator.domain(table_name="users").get_query()
+    == 'SELECT "username","age","city" FROM "users"'
+)
+
+
+# async def fetch_all_columns(self, table_name: str) -> list[str]:
+#     get_columns_query = f"""
+#         SELECT column_name
+#         FROM information_schema.columns
+#         WHERE table_name = '{table_name}'
+#         ORDER BY ordinal_position
+#     """
+#     if self.query_executor is None:
+#         raise Exception(
+#             f"Need to set a query executor to retrieve all columns for table {table_name!r}"
+#         )
+
+#     # records = [{'column_name': 'username'}, {'column_name': 'age'}, {'column_name': 'city'}]
+#     columns_records = self.query_executor(get_columns_query)
+#     return [r["column_name"] for r in columns_records]
+
+
+# ############################### POSTGRES
 # from typing import cast
 
 # import asyncpg
@@ -69,7 +90,7 @@ class SQLTranslator:
 #     return [r[0] for r in column_records]
 
 
-########################### MYSQL
+# ########################## MYSQL
 # from typing import cast
 
 # import aiomysql
