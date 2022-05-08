@@ -27,12 +27,18 @@ class SQLTranslator(ABC):
         print(f"[{self.DIALECT}] Selecting all columns for table {domain!r}")
 
         try:
-            table_columns = self.tables_columns[domain]
+            table_columns = self.tables_columns[domain]  # noqa
         except KeyError:
             raise KeyError(f"All columns are unknown for table {domain!r}")
         else:
-            self.query = self.query.from_(domain).select(*table_columns)
+            self.query = self.query.from_(domain).select("*")
 
+        return self
+
+    def select(self: Self, *, columns: Sequence[str]) -> Self:
+        self.query._select_star = False
+        self.query._selects = []
+        self.query = self.query.select(*columns)
         return self
 
     def get_query(self: Self) -> str:
