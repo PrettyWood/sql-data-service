@@ -9,6 +9,9 @@ from . import ALL_EXECUTORS
 class SQLExecutor(ABC):
     DIALECT: SQLDialect
 
+    def __init__(self, conn_config: Any) -> None:
+        self.conn_config = conn_config
+
     def __init_subclass__(cls) -> None:
         ALL_EXECUTORS[cls.DIALECT] = cls
 

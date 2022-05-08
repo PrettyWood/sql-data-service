@@ -18,7 +18,7 @@ down:
 
 .PHONY: dev
 dev:
-	poetry run uvicorn sql_data_service.main:app --reload
+	poetry run uvicorn sql_data_service.app:app --reload
 
 .PHONY: test
 test:

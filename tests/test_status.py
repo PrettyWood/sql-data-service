@@ -1,6 +1,6 @@
 from fastapi.testclient import TestClient
 
-from sql_data_service.main import app
+from sql_data_service.app import app
 
 client = TestClient(app)
 
