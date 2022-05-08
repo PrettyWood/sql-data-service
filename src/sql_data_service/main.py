@@ -3,7 +3,7 @@ from typing import Any
 from fastapi import FastAPI
 
 from . import __version__
-from .models import SQLQueryDefinition
+from .models.main import SQLQueryDefinition
 
 app = FastAPI()
 
@@ -15,4 +15,5 @@ def get_status() -> dict[str, str]:
 
 @app.post("/preview")
 async def get_preview(query_def: SQLQueryDefinition) -> list[dict[str, Any]]:
+    breakpoint()
     return []
