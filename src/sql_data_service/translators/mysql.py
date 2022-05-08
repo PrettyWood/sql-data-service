@@ -2,12 +2,12 @@ from pypika import MySQLQuery
 
 from sql_data_service.dialects import SQLDialect
 
-from .base import BaseSQLTranslator
+from .base import SQLTranslator
 
 
-class MySQLTranslator(BaseSQLTranslator):
+class MySQLTranslator(SQLTranslator):
     DIALECT = SQLDialect.MYSQL
     QUERY_CLS = MySQLQuery
 
 
-BaseSQLTranslator.register(MySQLTranslator)
+SQLTranslator.register(MySQLTranslator)

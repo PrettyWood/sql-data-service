@@ -2,12 +2,15 @@ from typing import Any
 
 import aiomysql
 
+from sql_data_service.dialects import SQLDialect
 from sql_data_service.models.mysql import MySQLConnectionConfig
 
-from .base import BaseSQLExecutor
+from .base import SQLExecutor
 
 
-class MySQLExecutor(BaseSQLExecutor):
+class MySQLExecutor(SQLExecutor):
+    DIALECT = SQLDialect.MYSQL
+
     def __init__(self, conn_config: MySQLConnectionConfig) -> None:
         self.conn_config = conn_config
 
@@ -34,7 +37,7 @@ class MySQLExecutor(BaseSQLExecutor):
         return [r["column_name"] for r in records]
 
 
-BaseSQLExecutor.register(MySQLExecutor)
+SQLExecutor.register(MySQLExecutor)
 
 
 async def get_connection(mysql_config: MySQLConnectionConfig) -> aiomysql.Connection:

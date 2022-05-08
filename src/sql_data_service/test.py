@@ -25,7 +25,7 @@ async def test_mysql() -> None:
 
     sql_query = (
         MySQLTranslator(tables_columns={"users": all_users_columns})
-        .domain(table_name="users")
+        .domain(domain="users")
         .get_query()
     )
     res = await mysql_executor.execute(sql_query)
@@ -57,7 +57,7 @@ async def test_postgresql() -> None:
 
     sql_query = (
         PostgreSQLTranslator(tables_columns={"users": all_users_columns})
-        .domain(table_name="users")
+        .domain(domain="users")
         .get_query()
     )
     res = await postgresql_executor.execute(sql_query)

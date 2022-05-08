@@ -2,12 +2,12 @@ from pypika import PostgreSQLQuery
 
 from sql_data_service.dialects import SQLDialect
 
-from .base import BaseSQLTranslator
+from .base import SQLTranslator
 
 
-class PostgreSQLTranslator(BaseSQLTranslator):
+class PostgreSQLTranslator(SQLTranslator):
     DIALECT = SQLDialect.POSTGRESQL
     QUERY_CLS = PostgreSQLQuery
 
 
-BaseSQLTranslator.register(PostgreSQLTranslator)
+SQLTranslator.register(PostgreSQLTranslator)

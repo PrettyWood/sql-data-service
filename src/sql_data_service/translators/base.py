@@ -7,10 +7,12 @@ from pypika import Query
 
 from sql_data_service.dialects import SQLDialect
 
-Self = TypeVar("Self", bound="BaseSQLTranslator")
+from . import ALL_TRANSLATORS
+
+Self = TypeVar("Self", bound="SQLTranslator")
 
 
-class BaseSQLTranslator(ABC):
+class SQLTranslator(ABC):
     DIALECT: SQLDialect
     QUERY_CLS: Query
 
@@ -18,15 +20,18 @@ class BaseSQLTranslator(ABC):
         self.tables_columns: Mapping[str, Sequence[str]] = tables_columns or {}
         self.query = self.QUERY_CLS()
 
-    def domain(self: Self, *, table_name: str) -> Self:
-        print(f"[{self.DIALECT}] Selecting all columns for table {table_name!r}")
+    def __init_subclass__(cls) -> None:
+        ALL_TRANSLATORS[cls.DIALECT] = cls
+
+    def domain(self: Self, *, domain: str) -> Self:
+        print(f"[{self.DIALECT}] Selecting all columns for table {domain!r}")
 
         try:
-            table_columns = self.tables_columns[table_name]
+            table_columns = self.tables_columns[domain]
         except KeyError:
-            raise KeyError(f"All columns are unknown for table {table_name!r}")
+            raise KeyError(f"All columns are unknown for table {domain!r}")
         else:
-            self.query = self.query.from_(table_name).select(*table_columns)
+            self.query = self.query.from_(domain).select(*table_columns)
 
         return self
 
