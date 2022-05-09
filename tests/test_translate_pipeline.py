@@ -21,6 +21,11 @@ PIPELINES = {
         {"name": "select", "columns": ["username", "age"]},
         {"name": "rename", "to_rename": ["username", "first name"]},
     ],
+    "delete": [
+        {"name": "domain", "domain": "users"},
+        {"name": "select", "columns": ["username", "age", "city"]},
+        {"name": "delete", "columns": ["username", "city"]},
+    ],
 }
 
 
@@ -78,6 +83,19 @@ PIPELINES = {
             PIPELINES["rename"],
             ALL_TABLES_COLUMNS,
             'SELECT "username" "first name","age" FROM "users"',
+        ),
+        # pipeline delete
+        (
+            SQLDialect.MYSQL,
+            PIPELINES["delete"],
+            ALL_TABLES_COLUMNS,
+            "SELECT `age` FROM `users`",
+        ),
+        (
+            SQLDialect.POSTGRESQL,
+            PIPELINES["delete"],
+            ALL_TABLES_COLUMNS,
+            'SELECT "age" FROM "users"',
         ),
     ],
 )

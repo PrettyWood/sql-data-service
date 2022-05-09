@@ -57,6 +57,12 @@ class SQLTranslator(ABC):
         self.main_table = domain
         return self
 
+    def delete(self: Self, *, columns: Sequence[str]) -> Self:
+        for col in self.tables_columns_metadata[self.main_table]:
+            if col.name in columns:
+                col.selected = False
+        return self
+
     def rename(self: Self, *, to_rename: tuple[str, str]) -> Self:
         table_cols_metadata = self.tables_columns_metadata[self.main_table]
         col_metadata = [c for c in table_cols_metadata if to_rename[0]][0]
@@ -66,12 +72,10 @@ class SQLTranslator(ABC):
     def select(self: Self, *, columns: Sequence[str]) -> Self:
         if self.main_table not in self.tables_columns_metadata:
             self.set_tables_columns({self.main_table: columns})
-
         try:
             for col in self.tables_columns_metadata[self.main_table]:
                 if col.name not in columns:
                     col.selected = False
         except KeyError:
             self.tables_columns_metadata[self.main_table] = []
-
         return self
