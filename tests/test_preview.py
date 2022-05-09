@@ -9,6 +9,8 @@ from sql_data_service.models import SQLQueryDefinition
 
 client = TestClient(app)
 
+ALL_TEST_TABLES = ["logins", "users"]
+
 
 @pytest.mark.usefixtures(
     "is_mysql_ready",
@@ -58,6 +60,215 @@ client = TestClient(app)
                 {"username": "Pikachu", "age": 7, "city": "Bourg Palette"},
             ],
         ),
+        (
+            [
+                {"name": "domain", "domain": "users"},
+                {
+                    "name": "filter",
+                    "condition": {"column": "city", "operator": "eq", "value": "Bourg Palette"},
+                },
+            ],
+            [
+                {"username": "Pikachu", "age": 7, "city": "Bourg Palette"},
+                {"username": "Bulbi", "age": 7, "city": "Bourg Palette"},
+            ],
+        ),
+        (
+            [
+                {"name": "domain", "domain": "users"},
+                {
+                    "name": "filter",
+                    "condition": {"column": "city", "operator": "ne", "value": "Bourg Palette"},
+                },
+            ],
+            [
+                {"username": "Eric", "age": 30, "city": "Paris"},
+                {"username": "Chiara", "age": 31, "city": "Firenze"},
+            ],
+        ),
+        (
+            [
+                {"name": "domain", "domain": "users"},
+                {
+                    "name": "filter",
+                    "condition": {"column": "age", "operator": "gt", "value": 30},
+                },
+            ],
+            [
+                {"username": "Chiara", "age": 31, "city": "Firenze"},
+            ],
+        ),
+        (
+            [
+                {"name": "domain", "domain": "users"},
+                {
+                    "name": "filter",
+                    "condition": {"column": "age", "operator": "ge", "value": 30},
+                },
+            ],
+            [
+                {"username": "Eric", "age": 30, "city": "Paris"},
+                {"username": "Chiara", "age": 31, "city": "Firenze"},
+            ],
+        ),
+        (
+            [
+                {"name": "domain", "domain": "users"},
+                {
+                    "name": "filter",
+                    "condition": {"column": "age", "operator": "lt", "value": 30},
+                },
+            ],
+            [
+                {"username": "Pikachu", "age": 7, "city": "Bourg Palette"},
+                {"username": "Bulbi", "age": 7, "city": "Bourg Palette"},
+            ],
+        ),
+        (
+            [
+                {"name": "domain", "domain": "users"},
+                {
+                    "name": "filter",
+                    "condition": {"column": "age", "operator": "le", "value": 30},
+                },
+            ],
+            [
+                {"username": "Eric", "age": 30, "city": "Paris"},
+                {"username": "Pikachu", "age": 7, "city": "Bourg Palette"},
+                {"username": "Bulbi", "age": 7, "city": "Bourg Palette"},
+            ],
+        ),
+        (
+            [
+                {"name": "domain", "domain": "users"},
+                {
+                    "name": "filter",
+                    "condition": {"column": "age", "operator": "in", "value": [7, 31]},
+                },
+            ],
+            [
+                {"username": "Chiara", "age": 31, "city": "Firenze"},
+                {"username": "Pikachu", "age": 7, "city": "Bourg Palette"},
+                {"username": "Bulbi", "age": 7, "city": "Bourg Palette"},
+            ],
+        ),
+        (
+            [
+                {"name": "domain", "domain": "users"},
+                {
+                    "name": "filter",
+                    "condition": {"column": "age", "operator": "nin", "value": [7, 31]},
+                },
+            ],
+            [
+                {"username": "Eric", "age": 30, "city": "Paris"},
+            ],
+        ),
+        (
+            [
+                {"name": "domain", "domain": "users"},
+                {
+                    "name": "filter",
+                    "condition": {"column": "username", "operator": "matches", "value": "(Er|Pik)"},
+                },
+            ],
+            [
+                {"username": "Eric", "age": 30, "city": "Paris"},
+                {"username": "Pikachu", "age": 7, "city": "Bourg Palette"},
+            ],
+        ),
+        (
+            [
+                {"name": "domain", "domain": "users"},
+                {
+                    "name": "filter",
+                    "condition": {
+                        "column": "username",
+                        "operator": "notmatches",
+                        "value": "(Er|Pik)",
+                    },
+                },
+            ],
+            [
+                {"username": "Chiara", "age": 31, "city": "Firenze"},
+                {"username": "Bulbi", "age": 7, "city": "Bourg Palette"},
+            ],
+        ),
+        (
+            [
+                {"name": "domain", "domain": "logins"},
+                {
+                    "name": "filter",
+                    "condition": {
+                        "column": "type",
+                        "operator": "isnull",
+                        "value": "",
+                    },
+                },
+            ],
+            [
+                {"username": "Eric", "login": "2021-05-09", "type": None},
+                {"username": "Chiara", "login": "2021-05-08", "type": None},
+            ],
+        ),
+        (
+            [
+                {"name": "domain", "domain": "logins"},
+                {
+                    "name": "filter",
+                    "condition": {
+                        "column": "type",
+                        "operator": "notnull",
+                        "value": "",
+                    },
+                },
+            ],
+            [
+                {"username": "Pikachu", "login": "2020-01-01", "type": "Electric"},
+                {"username": "Bulbi", "login": "2019-01-01", "type": "Grass/Poison"},
+            ],
+        ),
+        (
+            [
+                {"name": "domain", "domain": "logins"},
+                {
+                    "name": "filter",
+                    "condition": {
+                        "or": [
+                            {
+                                "column": "username",
+                                "operator": "eq",
+                                "value": "Eric",
+                            },
+                            {
+                                "column": "username",
+                                "operator": "matches",
+                                "value": "Chia",
+                            },
+                            {
+                                "and": [
+                                    {
+                                        "column": "type",
+                                        "operator": "notnull",
+                                        "value": "",
+                                    },
+                                    {
+                                        "column": "login",
+                                        "operator": "ge",
+                                        "value": "2020-01-01",
+                                    },
+                                ]
+                            },
+                        ]
+                    },
+                },
+            ],
+            [
+                {"username": "Eric", "login": "2021-05-09", "type": None},
+                {"username": "Chiara", "login": "2021-05-08", "type": None},
+                {"username": "Pikachu", "login": "2020-01-01", "type": "Electric"},
+            ],
+        ),
     ),
 )
 def test_get_preview_mysql(
@@ -76,7 +287,7 @@ def test_get_preview_mysql(
     )
     preview_query = PreviewQuery(
         query_def=sql_query_definition,
-        tables=["users"],
+        tables=ALL_TEST_TABLES,
     )
     response = client.post("/preview", json=preview_query.dict())
 
