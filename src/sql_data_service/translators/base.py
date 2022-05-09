@@ -144,6 +144,14 @@ class SQLTranslator(ABC):
         self._query_infos.wheres.append(self._get_filter_criterion(condition))
         return self
 
+    def lowercase(self: Self, *, column: str) -> Self:
+        col_aliases = [c.alias or c.name for c in self._query_infos.selected]
+        col_real_names = [c.name for c in self._query_infos.selected]
+        idx = col_aliases.index(column)
+        column_field: Field = getattr(self._query_infos.from_, col_real_names[idx])
+        self._query_infos.selected[idx] = functions.Lower(column_field).as_(col_aliases[idx])
+        return self
+
     def rename(self: Self, *, to_rename: tuple[str, str]) -> Self:
         for col_field in self._query_infos.selected:
             if col_field.name == to_rename[0]:

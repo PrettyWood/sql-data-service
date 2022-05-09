@@ -29,6 +29,7 @@ ALL_TEST_TABLES = ["logins", "users"]
                 {"username": "Bulbi", "age": 7, "city": "Bourg Palette"},
             ],
         ),
+        # ~~~~~~~~~~~~~~~ RENAME ~~~~~~~~~~~~~~
         (
             [
                 {"name": "domain", "domain": "users"},
@@ -42,6 +43,7 @@ ALL_TEST_TABLES = ["logins", "users"]
                 {"first name": "Bulbi", "age": 7},
             ],
         ),
+        # ~~~~~~~~~~~~~~~ SORT ~~~~~~~~~~~~~~
         (
             [
                 {"name": "domain", "domain": "users"},
@@ -60,6 +62,7 @@ ALL_TEST_TABLES = ["logins", "users"]
                 {"username": "Pikachu", "age": 7, "city": "Bourg Palette"},
             ],
         ),
+        # ~~~~~~~~~~~~~~~ FILTER ~~~~~~~~~~~~~~
         (
             [
                 {"name": "domain", "domain": "users"},
@@ -269,6 +272,7 @@ ALL_TEST_TABLES = ["logins", "users"]
                 {"username": "Pikachu", "login": "2020-01-01", "type": "Electric"},
             ],
         ),
+        # ~~~~~~~~~~~~~~~ UPPERCASE ~~~~~~~~~~~~~~
         (
             [
                 {"name": "domain", "domain": "users"},
@@ -292,6 +296,32 @@ ALL_TEST_TABLES = ["logins", "users"]
                 {"first name": "CHIARA", "age": 31, "city": "Firenze"},
                 {"first name": "PIKACHU", "age": 7, "city": "Bourg Palette"},
                 {"first name": "BULBI", "age": 7, "city": "Bourg Palette"},
+            ],
+        ),
+        # ~~~~~~~~~~~~~~~ LOWERCASE ~~~~~~~~~~~~~~
+        (
+            [
+                {"name": "domain", "domain": "users"},
+                {"name": "lowercase", "column": "city"},
+            ],
+            [
+                {"username": "Eric", "age": 30, "city": "paris"},
+                {"username": "Chiara", "age": 31, "city": "firenze"},
+                {"username": "Pikachu", "age": 7, "city": "bourg palette"},
+                {"username": "Bulbi", "age": 7, "city": "bourg palette"},
+            ],
+        ),
+        (
+            [
+                {"name": "domain", "domain": "users"},
+                {"name": "rename", "to_rename": ["username", "first name"]},
+                {"name": "lowercase", "column": "first name"},
+            ],
+            [
+                {"first name": "eric", "age": 30, "city": "Paris"},
+                {"first name": "chiara", "age": 31, "city": "Firenze"},
+                {"first name": "pikachu", "age": 7, "city": "Bourg Palette"},
+                {"first name": "bulbi", "age": 7, "city": "Bourg Palette"},
             ],
         ),
     ),
