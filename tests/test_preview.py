@@ -269,6 +269,31 @@ ALL_TEST_TABLES = ["logins", "users"]
                 {"username": "Pikachu", "login": "2020-01-01", "type": "Electric"},
             ],
         ),
+        (
+            [
+                {"name": "domain", "domain": "users"},
+                {"name": "uppercase", "column": "city"},
+            ],
+            [
+                {"username": "Eric", "age": 30, "city": "PARIS"},
+                {"username": "Chiara", "age": 31, "city": "FIRENZE"},
+                {"username": "Pikachu", "age": 7, "city": "BOURG PALETTE"},
+                {"username": "Bulbi", "age": 7, "city": "BOURG PALETTE"},
+            ],
+        ),
+        (
+            [
+                {"name": "domain", "domain": "users"},
+                {"name": "rename", "to_rename": ["username", "first name"]},
+                {"name": "uppercase", "column": "first name"},
+            ],
+            [
+                {"first name": "ERIC", "age": 30, "city": "Paris"},
+                {"first name": "CHIARA", "age": 31, "city": "Firenze"},
+                {"first name": "PIKACHU", "age": 7, "city": "Bourg Palette"},
+                {"first name": "BULBI", "age": 7, "city": "Bourg Palette"},
+            ],
+        ),
     ),
 )
 def test_get_preview_mysql(

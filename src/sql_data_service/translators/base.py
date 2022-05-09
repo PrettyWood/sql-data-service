@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 # from typing_extensions import Self
 from typing import TYPE_CHECKING, Mapping, Sequence, TypeVar, cast
 
-from pypika import Criterion, Field, Order, Query, Table
+from pypika import Criterion, Field, Order, Query, Table, functions
 
 from sql_data_service.dialects import SQLDialect
 
@@ -160,4 +160,12 @@ class SQLTranslator(ABC):
             self._query_infos.orders[col_to_sort] = (
                 Order.desc if order.lower() == "desc" else Order.asc
             )
+        return self
+
+    def uppercase(self: Self, *, column: str) -> Self:
+        col_aliases = [c.alias or c.name for c in self._query_infos.selected]
+        col_real_names = [c.name for c in self._query_infos.selected]
+        idx = col_aliases.index(column)
+        column_field: Field = getattr(self._query_infos.from_, col_real_names[idx])
+        self._query_infos.selected[idx] = functions.Upper(column_field).as_(col_aliases[idx])
         return self
