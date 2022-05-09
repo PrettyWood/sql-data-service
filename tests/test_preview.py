@@ -1,3 +1,5 @@
+from typing import Any
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -13,8 +15,35 @@ client = TestClient(app)
     "is_postgresql_ready",
 )
 @pytest.mark.parametrize("sql_dialect", SQLDialect.__members__.values())
+@pytest.mark.parametrize(
+    "pipeline_steps,expected_res",
+    (
+        (
+            [{"name": "domain", "domain": "users"}],
+            [
+                {"username": "Eric", "age": 30, "city": "Paris"},
+                {"username": "Chiara", "age": 31, "city": "Firenze"},
+                {"username": "Pikachu", "age": 7, "city": "Bourg Palette"},
+            ],
+        ),
+        (
+            [
+                {"name": "domain", "domain": "users"},
+                {"name": "select", "columns": ["username", "age"]},
+                {"name": "rename", "to_rename": ["username", "first name"]},
+            ],
+            [
+                {"first name": "Eric", "age": 30},
+                {"first name": "Chiara", "age": 31},
+                {"first name": "Pikachu", "age": 7},
+            ],
+        ),
+    ),
+)
 def test_get_preview_mysql(
     sql_dialect: SQLDialect,
+    pipeline_steps: list[dict[str, str]],
+    expected_res: list[dict[str, Any]],
     request: pytest.FixtureRequest,
 ) -> None:
     sql_connection_config = request.getfixturevalue(f"{sql_dialect}_connection_config")
@@ -23,7 +52,7 @@ def test_get_preview_mysql(
             "dialect": sql_dialect.value,
             "config": sql_connection_config,
         },
-        pipeline={"steps": [{"name": "domain", "domain": "users"}]},
+        pipeline={"steps": pipeline_steps},
     )
     preview_query = PreviewQuery(
         query_def=sql_query_definition,
@@ -32,8 +61,4 @@ def test_get_preview_mysql(
     response = client.post("/preview", json=preview_query.dict())
 
     assert response.status_code == 200
-    assert response.json() == [
-        {"username": "Eric", "age": 30, "city": "Paris"},
-        {"username": "Chiara", "age": 31, "city": "Firenze"},
-        {"username": "Pikachu", "age": 7, "city": "Bourg Palette"},
-    ]
+    assert response.json() == expected_res
