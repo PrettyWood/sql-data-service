@@ -1,10 +1,10 @@
 from abc import ABC
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 # from typing_extensions import Self
 from typing import Mapping, Sequence, TypeVar
 
-from pypika import Field, Query
+from pypika import Field, Order, Query
 
 from sql_data_service.dialects import SQLDialect
 
@@ -14,10 +14,10 @@ Self = TypeVar("Self", bound="SQLTranslator")
 
 
 @dataclass
-class ColumnMetadata:
-    name: str
-    alias: str | None = None
-    selected: bool = True
+class QueryInfos:
+    selected: list[Field] = field(default_factory=list)
+    from_: str = ""
+    order_by: dict[str, str] = field(default_factory=dict)
 
 
 class SQLTranslator(ABC):
@@ -25,57 +25,51 @@ class SQLTranslator(ABC):
     QUERY_CLS: Query
 
     def __init__(self: Self, *, tables_columns: Mapping[str, Sequence[str]] | None = None) -> None:
-        self.main_table: str = ""
-        self.tables_columns_metadata: dict[str, list[ColumnMetadata]] = {}
-        if tables_columns:
-            self.set_tables_columns(tables_columns)
+        self._tables_columns: Mapping[str, Sequence[str]] = tables_columns or {}
+        self._query_infos = QueryInfos()
 
     def __init_subclass__(cls) -> None:
         ALL_TRANSLATORS[cls.DIALECT] = cls
 
-    def set_tables_columns(self: Self, tables_columns: Mapping[str, Sequence[str]]) -> None:
-        for table_name, table_columns in tables_columns.items():
-            self.tables_columns_metadata[table_name] = [
-                ColumnMetadata(table_col) for table_col in table_columns
-            ]
-
     def get_query(self: Self) -> str:
-        try:
-            selected_columns = tuple(
-                Field(name=column.name, alias=column.alias)
-                for column in self.tables_columns_metadata[self.main_table]
-                if column.selected
-            )
-        except KeyError:
-            selected_columns = ("*",)
-        query_str: str = self.QUERY_CLS().from_(self.main_table).select(*selected_columns).get_sql()
+        query = self.QUERY_CLS().from_(self._query_infos.from_).select(*self._query_infos.selected)
+        for col, order in self._query_infos.order_by.items():
+            query = query.orderby(col, order=order)
+
+        query_str: str = query.get_sql()
         return query_str
 
     # All other methods implement step from https://weaverbird.toucantoco.com/docs/steps/,
     # the name of the method being the name of the step and the kwargs the rest of the params
     def domain(self: Self, *, domain: str) -> Self:
-        self.main_table = domain
+        self._query_infos.from_ = domain
+        try:
+            self.select(columns=self._tables_columns[domain])
+        except KeyError:
+            self._query_infos.selected = ["*"]
         return self
 
     def delete(self: Self, *, columns: Sequence[str]) -> Self:
-        for col in self.tables_columns_metadata[self.main_table]:
-            if col.name in columns:
-                col.selected = False
+        self._query_infos.selected = [
+            col_field for col_field in self._query_infos.selected if col_field.name not in columns
+        ]
         return self
 
     def rename(self: Self, *, to_rename: tuple[str, str]) -> Self:
-        table_cols_metadata = self.tables_columns_metadata[self.main_table]
-        col_metadata = [c for c in table_cols_metadata if to_rename[0]][0]
-        col_metadata.alias = to_rename[1]
+        for col_field in self._query_infos.selected:
+            if col_field.name == to_rename[0]:
+                col_field.alias = to_rename[1]
         return self
 
     def select(self: Self, *, columns: Sequence[str]) -> Self:
-        if self.main_table not in self.tables_columns_metadata:
-            self.set_tables_columns({self.main_table: columns})
-        try:
-            for col in self.tables_columns_metadata[self.main_table]:
-                if col.name not in columns:
-                    col.selected = False
-        except KeyError:
-            self.tables_columns_metadata[self.main_table] = []
+        self._query_infos.selected = [Field(col_name) for col_name in columns]
+        return self
+
+    # columns = [{"column": "age", "order": "asc"}]
+    def sort(self: Self, *, columns: Sequence[dict[str, str]]) -> Self:
+        for sorted_cols in columns:
+            col_to_sort, order = sorted_cols["column"], sorted_cols["order"]
+            self._query_infos.order_by[col_to_sort] = (
+                Order.desc if order.lower() == "desc" else Order.asc
+            )
         return self

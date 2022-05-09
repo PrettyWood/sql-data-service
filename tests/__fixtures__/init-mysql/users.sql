@@ -4,9 +4,9 @@ CREATE TABLE IF NOT EXISTS users (
   city VARCHAR(255)
 );
 
-INSERT INTO users
-  (username, age, city)
-VALUES
-  ('Eric',30,'Paris'),
-  ('Chiara',31,'Firenze'),
-  ('Pikachu',7,'Bourg Palette');
+LOAD DATA INFILE '/data/users.csv'
+INTO TABLE users 
+FIELDS TERMINATED BY ',' 
+ENCLOSED BY '"'
+LINES TERMINATED BY '\n'
+IGNORE 1 ROWS;

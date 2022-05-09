@@ -24,6 +24,7 @@ client = TestClient(app)
                 {"username": "Eric", "age": 30, "city": "Paris"},
                 {"username": "Chiara", "age": 31, "city": "Firenze"},
                 {"username": "Pikachu", "age": 7, "city": "Bourg Palette"},
+                {"username": "Bulbi", "age": 7, "city": "Bourg Palette"},
             ],
         ),
         (
@@ -36,6 +37,25 @@ client = TestClient(app)
                 {"first name": "Eric", "age": 30},
                 {"first name": "Chiara", "age": 31},
                 {"first name": "Pikachu", "age": 7},
+                {"first name": "Bulbi", "age": 7},
+            ],
+        ),
+        (
+            [
+                {"name": "domain", "domain": "users"},
+                {
+                    "name": "sort",
+                    "columns": [
+                        {"column": "age", "order": "desc"},
+                        {"column": "username", "order": "asc"},
+                    ],
+                },
+            ],
+            [
+                {"username": "Chiara", "age": 31, "city": "Firenze"},
+                {"username": "Eric", "age": 30, "city": "Paris"},
+                {"username": "Bulbi", "age": 7, "city": "Bourg Palette"},
+                {"username": "Pikachu", "age": 7, "city": "Bourg Palette"},
             ],
         ),
     ),
