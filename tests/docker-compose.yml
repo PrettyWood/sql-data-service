@@ -6,7 +6,7 @@ services:
     ports:
       - 5432:5432
     volumes:
-      - ./__fixtures__/init-postgresql/:/docker-entrypoint-initdb.d/:ro
+      - ./__fixtures__/postgresql/:/docker-entrypoint-initdb.d/:ro
       - ./__fixtures__/data/:/data/:ro
     environment:
       POSTGRES_USER: pika_user
@@ -22,7 +22,7 @@ services:
     ports:
       - 3306:3306
     volumes:
-      - ./__fixtures__/init-mysql/:/docker-entrypoint-initdb.d/:ro
+      - ./__fixtures__/mysql/:/docker-entrypoint-initdb.d/:ro
       - ./__fixtures__/data/:/data/:ro
     command:
       - '--secure_file_priv='

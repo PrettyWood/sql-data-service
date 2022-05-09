@@ -1,0 +1,12 @@
+CREATE TABLE IF NOT EXISTS users (
+  username VARCHAR(255),
+  age INT,
+  city VARCHAR(255)
+);
+
+LOAD DATA INFILE '/data/users.csv'
+INTO TABLE users 
+FIELDS TERMINATED BY ',' 
+ENCLOSED BY '"'
+LINES TERMINATED BY '\n'
+IGNORE 1 ROWS;

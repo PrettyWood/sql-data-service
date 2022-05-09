@@ -7,6 +7,7 @@ from sql_data_service.dialects import SQLDialect
 from sql_data_service.translate import translate_pipeline
 
 ALL_TABLES_COLUMNS = {
+    "labels": ["Label", "Cartel", "Value"],
     "logins": ["username", "login", "type"],
     "users": ["username", "age", "city"],
 }
@@ -76,6 +77,10 @@ PIPELINES = {
                 ]
             },
         },
+    ],
+    "top": [
+        {"name": "domain", "domain": "labels"},
+        {"name": "top", "rank_on": "Value", "groups": ["Cartel"], "sort": "desc", "limit": 1},
     ],
 }
 
@@ -204,6 +209,16 @@ PIPELINES = {
             (
                 'SELECT "username","login","type" FROM "logins" '
                 'WHERE "username"=\'Eric\' OR "username" SIMILAR TO \'%Chia%\' OR ("type" IS NOT NULL AND "login">=\'2020-01-01\')'
+            ),
+        ),
+        # pipeline top
+        (
+            SQLDialect.POSTGRESQL,
+            PIPELINES["top"],
+            ALL_TABLES_COLUMNS,
+            (
+                'WITH __top__ AS (SELECT "Label","Cartel","Value",ROW_NUMBER() OVER(PARTITION BY "Cartel" ORDER BY "Value" DESC) FROM "labels") '
+                'SELECT "Label","Cartel","Value" FROM "__top__" WHERE "row_number"=1'
             ),
         ),
     ],

@@ -2,7 +2,7 @@ from abc import ABC
 from dataclasses import dataclass, field
 
 # from typing_extensions import Self
-from typing import TYPE_CHECKING, Mapping, Sequence, TypeVar, cast
+from typing import TYPE_CHECKING, Any, Literal, Mapping, Sequence, TypeVar, cast
 
 from pypika import Criterion, Field, Order, Query, Table, functions
 
@@ -14,7 +14,9 @@ Self = TypeVar("Self", bound="SQLTranslator")
 
 
 if TYPE_CHECKING:
-    from typing import Any, Literal, TypedDict
+    from typing import TypedDict
+
+    from pypika.queries import QueryBuilder
 
     class SingleFilterCondition(TypedDict):
         column: str
@@ -53,6 +55,8 @@ class QueryInfos:
     from_: Table = Table("")
     wheres: list[Criterion] = field(default_factory=list)
     orders: dict[str, str] = field(default_factory=dict)
+    limit: int | None = None
+    sub_queries: dict[str, Query] = field(default_factory=dict)
 
 
 class SQLTranslator(ABC):
@@ -67,12 +71,19 @@ class SQLTranslator(ABC):
         ALL_TRANSLATORS[cls.DIALECT] = cls
 
     def get_query(self: Self) -> str:
-        query = self.QUERY_CLS().from_(self._query_infos.from_).select(*self._query_infos.selected)
+        query: "QueryBuilder" = self.QUERY_CLS
 
+        for sub_query_alias, sub_query in self._query_infos.sub_queries.items():
+            query = query.with_(sub_query, sub_query_alias)
+
+        query = query.from_(self._query_infos.from_).select(*self._query_infos.selected)
         query = query.where(Criterion.all(self._query_infos.wheres))
 
         for col, order in self._query_infos.orders.items():
             query = query.orderby(col, order=order)
+
+        if self._query_infos.limit is not None:
+            query = query.limit(self._query_infos.limit)
 
         query_str: str = query.get_sql()
         return query_str
@@ -168,6 +179,29 @@ class SQLTranslator(ABC):
             self._query_infos.orders[col_to_sort] = (
                 Order.desc if order.lower() == "desc" else Order.asc
             )
+        return self
+
+    def _top_with_groups(
+        self: Self, rank_on: str, limit: int, order: Order, groups: Sequence[str]
+    ) -> None:
+        raise NotImplementedError(f"[{self.DIALECT}] top is not implemented with groups")
+
+    def top(
+        self: Self,
+        *,
+        rank_on: str,
+        limit: int,
+        sort: Literal["asc", "desc"],
+        groups: Sequence[str],
+    ) -> Self:
+        order = Order.desc if sort == "desc" else Order.asc
+
+        if groups:
+            self._top_with_groups(rank_on, limit, order, groups)
+        else:
+            self._query_infos.orders[rank_on] = order
+            self._query_infos.limit = limit
+
         return self
 
     def uppercase(self: Self, *, column: str) -> Self:

@@ -9,14 +9,20 @@ from sql_data_service.models import SQLQueryDefinition
 
 client = TestClient(app)
 
-ALL_TEST_TABLES = ["logins", "users"]
+ALL_TEST_TABLES = ["labels", "logins", "users"]
 
 
 @pytest.mark.usefixtures(
     "is_mysql_ready",
     "is_postgresql_ready",
 )
-@pytest.mark.parametrize("sql_dialect", SQLDialect.__members__.values())
+@pytest.mark.parametrize(
+    "sql_dialect",
+    (
+        SQLDialect.MYSQL,
+        SQLDialect.POSTGRESQL,
+    ),
+)
 @pytest.mark.parametrize(
     "pipeline_steps,expected_res",
     (
@@ -324,6 +330,34 @@ ALL_TEST_TABLES = ["logins", "users"]
                 {"first name": "bulbi", "age": 7, "city": "Bourg Palette"},
             ],
         ),
+        # ~~~~~~~~~~~~~~~ TOP ~~~~~~~~~~~~~~
+        (
+            [
+                {"name": "domain", "domain": "labels"},
+                {"name": "top", "rank_on": "Value", "sort": "asc", "limit": 3},
+            ],
+            [
+                {"Label": "Label 4", "Cartel": "Cartel 2", "Value": 1},
+                {"Label": "Label 6", "Cartel": "Cartel 2", "Value": 5},
+                {"Label": "Label 2", "Cartel": "Cartel 1", "Value": 7},
+            ],
+        ),
+        (
+            [
+                {"name": "domain", "domain": "labels"},
+                {
+                    "name": "top",
+                    "rank_on": "Value",
+                    "groups": ["Cartel"],
+                    "sort": "desc",
+                    "limit": 1,
+                },
+            ],
+            [
+                {"Label": "Label 3", "Cartel": "Cartel 1", "Value": 20},
+                {"Label": "Label 5", "Cartel": "Cartel 2", "Value": 10},
+            ],
+        ),
     ),
 )
 def test_get_preview_mysql(
@@ -344,7 +378,10 @@ def test_get_preview_mysql(
         query_def=sql_query_definition,
         tables=ALL_TEST_TABLES,
     )
-    response = client.post("/preview", json=preview_query.dict())
-
-    assert response.status_code == 200
-    assert response.json() == expected_res
+    try:
+        response = client.post("/preview", json=preview_query.dict())
+    except NotImplementedError as e:
+        pytest.skip(reason=str(e))
+    else:
+        assert response.status_code == 200
+        assert response.json() == expected_res
