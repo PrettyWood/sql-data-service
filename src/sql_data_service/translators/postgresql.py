@@ -1,6 +1,7 @@
 from typing import TYPE_CHECKING, Any, Sequence, TypeVar
 
-from pypika import Field, PostgreSQLQuery, Table
+from pypika import Field, Table
+from pypika.dialects import PostgreSQLQuery
 from pypika.enums import Comparator, Order
 from pypika.terms import AnalyticFunction, BasicCriterion, Criterion
 

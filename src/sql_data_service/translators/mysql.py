@@ -1,4 +1,4 @@
-from pypika import MySQLQuery
+from pypika.dialects import MySQLQuery
 
 from sql_data_service.dialects import SQLDialect
 
