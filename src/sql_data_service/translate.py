@@ -25,4 +25,4 @@ def translate_pipeline(
         else:
             translator = translator_method(**step.dict(exclude={"name"}))
 
-    return translator.get_query()
+    return translator.get_query_str()

@@ -393,6 +393,48 @@ ALL_TEST_TABLES = ["labels", "logins", "users"]
                 {"Label": "Label 3", "Cartel": "Cartel 1", "Value": 20},
             ],
         ),
+        # ~~~~~~~~~~~ AGGREGATE (count distinct) ~~~~~~~~~~~~~~
+        # ~~~~~~~~~~~ AGGREGATE (count) ~~~~~~~~~~~~~~
+        # ~~~~~~~~~~~ AGGREGATE (first) ~~~~~~~~~~~~~~
+        # ~~~~~~~~~~~ AGGREGATE (last) ~~~~~~~~~~~~~~
+        # ~~~~~~~~~~~ AGGREGATE (sum) ~~~~~~~~~~~~~~
+        (
+            [
+                {"name": "domain", "domain": "labels"},
+                {
+                    "name": "aggregate",
+                    "on": ["Cartel"],
+                    "aggregations": [
+                        {"new_columns": ["sumValue"], "agg_function": "sum", "columns": ["Value"]}
+                    ],
+                },
+            ],
+            [
+                {"Cartel": "Cartel 1", "sumValue": 40},
+                {"Cartel": "Cartel 2", "sumValue": 16},
+            ],
+        ),
+        (
+            [
+                {"name": "domain", "domain": "labels"},
+                {
+                    "name": "aggregate",
+                    "on": ["Cartel"],
+                    "aggregations": [
+                        {"new_columns": ["sumValue"], "agg_function": "sum", "columns": ["Value"]}
+                    ],
+                    "keep_original_granularity": True,
+                },
+            ],
+            [
+                {"Label": "Label 1", "Cartel": "Cartel 1", "Value": 13, "sumValue": 40},
+                {"Label": "Label 2", "Cartel": "Cartel 1", "Value": 7, "sumValue": 40},
+                {"Label": "Label 3", "Cartel": "Cartel 1", "Value": 20, "sumValue": 40},
+                {"Label": "Label 4", "Cartel": "Cartel 2", "Value": 1, "sumValue": 16},
+                {"Label": "Label 5", "Cartel": "Cartel 2", "Value": 10, "sumValue": 16},
+                {"Label": "Label 6", "Cartel": "Cartel 2", "Value": 5, "sumValue": 16},
+            ],
+        ),
     ),
 )
 def test_get_preview_mysql(

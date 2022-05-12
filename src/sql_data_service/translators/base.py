@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 # from typing_extensions import Self
 from typing import TYPE_CHECKING, Any, Literal, Mapping, Sequence, TypeVar, cast
 
-from pypika import Criterion, Field, Order, Query, Schema, Table, functions
+from pypika import Criterion, Field, JoinType, Order, Query, Schema, Table, functions
 
 from sql_data_service.dialects import SQLDialect
 
@@ -48,6 +48,13 @@ if TYPE_CHECKING:
         column: str
         order: Literal["asc", "desc"]
 
+    AggregationFunction = Literal["sum"]
+
+    class Aggregation(TypedDict):
+        new_columns: list[str]
+        agg_function: AggregationFunction
+        columns: list[str]
+
 
 @dataclass
 class QueryInfos:
@@ -55,9 +62,11 @@ class QueryInfos:
     selected: list[Field] = field(default_factory=list)
     from_: Table = Table("")
     wheres: list[Criterion] = field(default_factory=list)
+    groupbys: list[Field] = field(default_factory=list)
     orders: dict[str, str] = field(default_factory=dict)
     limit: int | None = None
     sub_queries: dict[str, Query] = field(default_factory=dict)
+    joins: list[tuple[Table, JoinType, tuple[str, ...]]] = field(default_factory=list)
 
 
 class SQLTranslator(ABC):
@@ -77,7 +86,7 @@ class SQLTranslator(ABC):
     def __init_subclass__(cls) -> None:
         ALL_TRANSLATORS[cls.DIALECT] = cls
 
-    def get_query(self: Self) -> str:
+    def get_query(self: Self) -> "QueryBuilder":
         query: "QueryBuilder" = self.QUERY_CLS
 
         for sub_query_alias, sub_query in self._query_infos.sub_queries.items():
@@ -90,13 +99,21 @@ class SQLTranslator(ABC):
 
         query = query.where(Criterion.all(self._query_infos.wheres))
 
+        query = query.groupby(*self._query_infos.groupbys)
+
         for col, order in self._query_infos.orders.items():
             query = query.orderby(col, order=order)
 
         if self._query_infos.limit is not None:
             query = query.limit(self._query_infos.limit)
 
-        query_str: str = query.get_sql()
+        for table, join_type, on_fields in self._query_infos.joins:
+            query = query.join(table, join_type).on_field(*on_fields)
+
+        return query
+
+    def get_query_str(self: Self) -> str:
+        query_str: str = self.get_query().get_sql()
         return query_str
 
     # All other methods implement step from https://weaverbird.toucantoco.com/docs/steps/,
@@ -106,6 +123,15 @@ class SQLTranslator(ABC):
 
     def argmin(self: Self, *, column: str, groups: Sequence[str]) -> Self:
         return self.top(rank_on=column, limit=1, sort="asc", groups=groups)
+
+    def aggregate(
+        self: Self,
+        *,
+        on: Sequence[str],
+        aggregations: Sequence["Aggregation"],
+        keep_original_granularity: bool = False,
+    ) -> Self:
+        raise NotImplementedError(f"[{self.DIALECT}] aggregate is not implemented")
 
     def domain(self: Self, *, domain: str) -> Self:
         if self._db_schema is not None:
@@ -234,3 +260,11 @@ class SQLTranslator(ABC):
         column_field: Field = getattr(self._query_infos.from_, col_real_names[idx])
         self._query_infos.selected[idx] = functions.Upper(column_field).as_(col_aliases[idx])
         return self
+
+
+def get_aggregate_function(agg_function: "AggregationFunction") -> functions.AggregateFunction:
+    match agg_function:
+        case "sum":
+            return functions.Sum
+        case _:
+            raise NotImplementedError(f"Aggregation for {agg_function!r} is not yet implemented")
