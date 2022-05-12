@@ -1,10 +1,12 @@
-from typing import Any, Sequence
+from typing import Any, Mapping, Sequence
 
 from fastapi import FastAPI
 from pydantic import BaseModel
+from weaverbird.pipeline import PipelineWithVariables
 
 from . import __version__
 from .connectors import ALL_EXECUTORS
+from .dialects import SQLDialect
 from .models import SQLQueryDefinition
 from .translate import translate_pipeline
 
@@ -14,6 +16,21 @@ app = FastAPI()
 @app.get("/")
 def get_status() -> dict[str, str]:
     return {"status": "OK", "version": __version__}
+
+
+class TranslationQuery(BaseModel):
+    sql_dialect: SQLDialect
+    pipeline: PipelineWithVariables
+    tables_columns: Mapping[str, Sequence[str]]
+
+
+@app.post("/translate")
+async def get_translation(translation_query: TranslationQuery) -> str:
+    return translate_pipeline(
+        sql_dialect=translation_query.sql_dialect,
+        pipeline=translation_query.pipeline,
+        tables_columns=translation_query.tables_columns,
+    )
 
 
 class PreviewQuery(BaseModel):

@@ -1,3 +1,5 @@
+from typing import Mapping, Sequence
+
 from weaverbird.pipeline import PipelineWithVariables
 
 from sql_data_service.dialects import SQLDialect
@@ -8,7 +10,7 @@ def translate_pipeline(
     *,
     sql_dialect: SQLDialect,
     pipeline: PipelineWithVariables,
-    tables_columns: dict[str, list[str]],
+    tables_columns: Mapping[str, Sequence[str]],
 ) -> str:
     translator_cls = ALL_TRANSLATORS[sql_dialect]
     translator = translator_cls(tables_columns=tables_columns)
