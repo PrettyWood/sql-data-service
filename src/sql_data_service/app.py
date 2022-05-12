@@ -10,6 +10,18 @@ from .dialects import SQLDialect
 from .models import SQLQueryDefinition
 from .translate import translate_pipeline
 
+
+def to_camel(snake_str: str) -> str:
+    first, *rest = snake_str.split("_")
+    return first + "".join(token.title() for token in rest)
+
+
+class CamelModel(BaseModel):
+    class Config:
+        alias_generator = to_camel
+        allow_population_by_field_name = True
+
+
 app = FastAPI()
 
 
@@ -18,7 +30,7 @@ def get_status() -> dict[str, str]:
     return {"status": "OK", "version": __version__}
 
 
-class TranslationQuery(BaseModel):
+class TranslationQuery(CamelModel):
     sql_dialect: SQLDialect
     pipeline: PipelineWithVariables
     tables_columns: Mapping[str, Sequence[str]]
@@ -33,7 +45,7 @@ async def get_translation(translation_query: TranslationQuery) -> str:
     )
 
 
-class PreviewQuery(BaseModel):
+class PreviewQuery(CamelModel):
     query_def: SQLQueryDefinition
     tables: Sequence[str] | None = None
 
