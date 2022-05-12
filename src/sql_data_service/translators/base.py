@@ -51,6 +51,7 @@ if TYPE_CHECKING:
 
 @dataclass
 class QueryInfos:
+    distinct_on: list[Field] = field(default_factory=list)
     selected: list[Field] = field(default_factory=list)
     from_: Table = Table("")
     wheres: list[Criterion] = field(default_factory=list)
@@ -83,6 +84,10 @@ class SQLTranslator(ABC):
             query = query.with_(sub_query, sub_query_alias)
 
         query = query.from_(self._query_infos.from_).select(*self._query_infos.selected)
+
+        if hasattr(query.__class__, "distinct_on"):
+            query = query.distinct_on(*self._query_infos.distinct_on)
+
         query = query.where(Criterion.all(self._query_infos.wheres))
 
         for col, order in self._query_infos.orders.items():
@@ -96,6 +101,12 @@ class SQLTranslator(ABC):
 
     # All other methods implement step from https://weaverbird.toucantoco.com/docs/steps/,
     # the name of the method being the name of the step and the kwargs the rest of the params
+    def argmax(self: Self, *, column: str, groups: Sequence[str]) -> Self:
+        return self.top(rank_on=column, limit=1, sort="desc", groups=groups)
+
+    def argmin(self: Self, *, column: str, groups: Sequence[str]) -> Self:
+        return self.top(rank_on=column, limit=1, sort="asc", groups=groups)
+
     def domain(self: Self, *, domain: str) -> Self:
         if self._db_schema is not None:
             self._query_infos.from_ = getattr(self._db_schema, domain)
@@ -212,6 +223,9 @@ class SQLTranslator(ABC):
             self._query_infos.limit = limit
 
         return self
+
+    def uniquegroups(self: Self, *, on: Sequence[str]) -> Self:
+        raise NotImplementedError(f"[{self.DIALECT}] uniquegroups is not implemented")
 
     def uppercase(self: Self, *, column: str) -> Self:
         col_aliases = [c.alias or c.name for c in self._query_infos.selected]

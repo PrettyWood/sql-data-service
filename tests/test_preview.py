@@ -358,6 +358,41 @@ ALL_TEST_TABLES = ["labels", "logins", "users"]
                 {"Label": "Label 5", "Cartel": "Cartel 2", "Value": 10},
             ],
         ),
+        # ~~~~~~~~~~~~~~~ ARGMAX ~~~~~~~~~~~~~~
+        (
+            [
+                {"name": "domain", "domain": "labels"},
+                {"name": "argmax", "column": "Value", "groups": ["Cartel"]},
+            ],
+            [
+                {"Label": "Label 3", "Cartel": "Cartel 1", "Value": 20},
+                {"Label": "Label 5", "Cartel": "Cartel 2", "Value": 10},
+            ],
+        ),
+        # ~~~~~~~~~~~~~~~ ARGMIN ~~~~~~~~~~~~~~
+        (
+            [
+                {"name": "domain", "domain": "labels"},
+                {"name": "argmin", "column": "Value", "groups": ["Cartel"]},
+            ],
+            [
+                {"Label": "Label 2", "Cartel": "Cartel 1", "Value": 7},
+                {"Label": "Label 4", "Cartel": "Cartel 2", "Value": 1},
+            ],
+        ),
+        # ~~~~~~~~~~~ UNIQUE GROUPS~~~~~~~~~~~~~~
+        (
+            [
+                {"name": "domain", "domain": "labels2"},
+                {"name": "uniquegroups", "on": ["Label", "Cartel"]},
+            ],
+            [
+                {"Label": "Label 1", "Cartel": "Cartel 1", "Value": 13},
+                {"Label": "Label 1", "Cartel": "Cartel 2", "Value": 1},
+                {"Label": "Label 2", "Cartel": "Cartel 1", "Value": 7},
+                {"Label": "Label 3", "Cartel": "Cartel 1", "Value": 20},
+            ],
+        ),
     ),
 )
 def test_get_preview_mysql(

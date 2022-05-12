@@ -82,6 +82,26 @@ PIPELINES = {
         {"name": "domain", "domain": "labels"},
         {"name": "top", "rank_on": "Value", "groups": ["Cartel"], "sort": "desc", "limit": 1},
     ],
+    "argmax": [
+        {"name": "domain", "domain": "labels"},
+        {"name": "argmax", "column": "Value", "groups": []},
+    ],
+    "argmax-groups": [
+        {"name": "domain", "domain": "labels"},
+        {"name": "argmax", "column": "Value", "groups": ["Cartel"]},
+    ],
+    "argmin": [
+        {"name": "domain", "domain": "labels"},
+        {"name": "argmin", "column": "Value", "groups": []},
+    ],
+    "argmin-groups": [
+        {"name": "domain", "domain": "labels"},
+        {"name": "argmin", "column": "Value", "groups": ["Cartel"]},
+    ],
+    "uniquegroups": [
+        {"name": "domain", "domain": "labels"},
+        {"name": "uniquegroups", "on": ["Label", "Cartel"]},
+    ],
 }
 
 
@@ -220,6 +240,45 @@ PIPELINES = {
                 'WITH __top__ AS (SELECT "Label","Cartel","Value",ROW_NUMBER() OVER(PARTITION BY "Cartel" ORDER BY "Value" DESC) FROM "labels") '
                 'SELECT "Label","Cartel","Value" FROM "__top__" WHERE "row_number"=1'
             ),
+        ),
+        # pipeline argmax
+        (
+            SQLDialect.POSTGRESQL,
+            PIPELINES["argmax"],
+            ALL_TABLES_COLUMNS,
+            'SELECT "Label","Cartel","Value" FROM "labels" ORDER BY "Value" DESC LIMIT 1',
+        ),
+        (
+            SQLDialect.POSTGRESQL,
+            PIPELINES["argmax-groups"],
+            ALL_TABLES_COLUMNS,
+            (
+                'WITH __top__ AS (SELECT "Label","Cartel","Value",ROW_NUMBER() OVER(PARTITION BY "Cartel" ORDER BY "Value" DESC) FROM "labels") '
+                'SELECT "Label","Cartel","Value" FROM "__top__" WHERE "row_number"=1'
+            ),
+        ),
+        # pipeline argmin
+        (
+            SQLDialect.POSTGRESQL,
+            PIPELINES["argmin"],
+            ALL_TABLES_COLUMNS,
+            'SELECT "Label","Cartel","Value" FROM "labels" ORDER BY "Value" ASC LIMIT 1',
+        ),
+        (
+            SQLDialect.POSTGRESQL,
+            PIPELINES["argmin-groups"],
+            ALL_TABLES_COLUMNS,
+            (
+                'WITH __top__ AS (SELECT "Label","Cartel","Value",ROW_NUMBER() OVER(PARTITION BY "Cartel" ORDER BY "Value" ASC) FROM "labels") '
+                'SELECT "Label","Cartel","Value" FROM "__top__" WHERE "row_number"=1'
+            ),
+        ),
+        # pipeline uniquegroups
+        (
+            SQLDialect.POSTGRESQL,
+            PIPELINES["uniquegroups"],
+            ALL_TABLES_COLUMNS,
+            'SELECT DISTINCT ON("Label","Cartel") "Label","Cartel","Value" FROM "labels"',
         ),
     ],
 )

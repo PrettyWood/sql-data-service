@@ -74,5 +74,9 @@ class PostgreSQLTranslator(SQLTranslator):
         self._query_infos.from_ = top_table
         self._query_infos.wheres = [operator.eq(top_table["row_number"], limit)]
 
+    def uniquegroups(self: Self, *, on: Sequence[str]) -> Self:
+        self._query_infos.distinct_on = list(on)
+        return self
+
 
 SQLTranslator.register(PostgreSQLTranslator)
