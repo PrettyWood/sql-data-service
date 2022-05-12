@@ -11,9 +11,10 @@ def translate_pipeline(
     sql_dialect: SQLDialect,
     pipeline: PipelineWithVariables,
     tables_columns: Mapping[str, Sequence[str]],
+    db_schema: str | None = None,
 ) -> str:
     translator_cls = ALL_TRANSLATORS[sql_dialect]
-    translator = translator_cls(tables_columns=tables_columns)
+    translator = translator_cls(tables_columns=tables_columns, db_schema=db_schema)
     for step in pipeline.steps:
         try:
             translator_method = getattr(translator, step.name)

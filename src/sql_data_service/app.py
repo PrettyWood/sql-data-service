@@ -34,6 +34,7 @@ class TranslationQuery(CamelModel):
     sql_dialect: SQLDialect
     pipeline: PipelineWithVariables
     tables_columns: Mapping[str, Sequence[str]]
+    db_schema: str | None = None
 
 
 @app.post("/translate")
@@ -42,6 +43,7 @@ async def get_translation(translation_query: TranslationQuery) -> str:
         sql_dialect=translation_query.sql_dialect,
         pipeline=translation_query.pipeline,
         tables_columns=translation_query.tables_columns,
+        db_schema=translation_query.db_schema,
     )
 
 

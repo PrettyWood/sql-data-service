@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 # from typing_extensions import Self
 from typing import TYPE_CHECKING, Any, Literal, Mapping, Sequence, TypeVar, cast
 
-from pypika import Criterion, Field, Order, Query, Table, functions
+from pypika import Criterion, Field, Order, Query, Schema, Table, functions
 
 from sql_data_service.dialects import SQLDialect
 
@@ -63,8 +63,14 @@ class SQLTranslator(ABC):
     DIALECT: SQLDialect
     QUERY_CLS: Query
 
-    def __init__(self: Self, *, tables_columns: Mapping[str, Sequence[str]] | None = None) -> None:
+    def __init__(
+        self: Self,
+        *,
+        tables_columns: Mapping[str, Sequence[str]] | None = None,
+        db_schema: str | None = None,
+    ) -> None:
         self._tables_columns: Mapping[str, Sequence[str]] = tables_columns or {}
+        self._db_schema: Schema | None = Schema(db_schema) if db_schema is not None else None
         self._query_infos = QueryInfos()
 
     def __init_subclass__(cls) -> None:
@@ -91,7 +97,10 @@ class SQLTranslator(ABC):
     # All other methods implement step from https://weaverbird.toucantoco.com/docs/steps/,
     # the name of the method being the name of the step and the kwargs the rest of the params
     def domain(self: Self, *, domain: str) -> Self:
-        self._query_infos.from_ = Table(domain)
+        if self._db_schema is not None:
+            self._query_infos.from_ = getattr(self._db_schema, domain)
+        else:
+            self._query_infos.from_ = Table(domain)
         try:
             self.select(columns=self._tables_columns[domain])
         except KeyError:

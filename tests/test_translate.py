@@ -15,7 +15,7 @@ ALL_TABLES_COLUMNS = {
 
 def test_translate() -> None:
     translation_query = TranslationQuery(
-        sql_dialect=SQLDialect.POSTGRESQL,
+        sql_dialect=SQLDialect.REDSHIFT,
         pipeline={
             "steps": [
                 {"name": "domain", "domain": "users"},
@@ -29,10 +29,11 @@ def test_translate() -> None:
             ]
         },
         tables_columns=ALL_TABLES_COLUMNS,
+        db_schema="AB123CD",
     )
     response = client.post("/translate", json=translation_query.dict())
     assert response.status_code == 200
     assert (
         response.json()
-        == 'SELECT "username","age","city" FROM "users" ORDER BY "age" ASC,"username" DESC'
+        == 'SELECT "username","age","city" FROM "AB123CD"."users" ORDER BY "age" ASC,"username" DESC'
     )
