@@ -2,7 +2,7 @@ from abc import ABC
 from dataclasses import dataclass
 
 # from typing_extensions import Self
-from typing import TYPE_CHECKING, Any, Callable, Literal, Mapping, Sequence, TypeVar
+from typing import TYPE_CHECKING, Callable, Mapping, Sequence, TypeVar
 
 from pypika import Criterion, Field, Order, Query, Schema, Table, functions
 
@@ -32,6 +32,7 @@ if TYPE_CHECKING:
         UniqueGroupsStep,
         UppercaseStep,
     )
+    from weaverbird.pipeline.steps.aggregate import AggregateFn
 
 
 @dataclass(kw_only=True)
@@ -259,7 +260,7 @@ class SQLTranslator(ABC):
         return query, StepTable(columns=table.columns)
 
 
-def get_aggregate_function(agg_function: "AggregationFunction") -> functions.AggregateFunction:
+def get_aggregate_function(agg_function: "AggregateFn") -> functions.AggregateFunction:
     match agg_function:
         case "sum":
             return functions.Sum

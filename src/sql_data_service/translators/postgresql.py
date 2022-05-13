@@ -1,8 +1,8 @@
-from typing import TYPE_CHECKING, Any, Sequence, TypeVar
+from typing import TYPE_CHECKING, Any, TypeVar
 
 from pypika import Field, Table
 from pypika.dialects import PostgreSQLQuery
-from pypika.enums import Comparator, JoinType, Order
+from pypika.enums import Comparator, Order
 from pypika.terms import AnalyticFunction, BasicCriterion, Criterion
 
 from sql_data_service.dialects import SQLDialect
@@ -46,30 +46,31 @@ class PostgreSQLTranslator(SQLTranslator):
                 agg_selected.append(new_agg_col)
 
         if step.keep_original_granularity:
-            pass
-            # self._query_infos.sub_queries["__original__"] = self.get_query()
-            # self._query_infos.sub_queries["__aggregated__"] = (
-            #     self.QUERY_CLS.from_(self._query_infos.from_)
-            #     .select(*on, *agg_selected)
-            #     .groupby(*on)
-            # )
+            current_query: "QueryBuilder" = self.QUERY_CLS.from_(table.name).select(*table.columns)
 
-            # left_table = Table("__original__")
-            # right_table = Table("__aggregated__")
-            # all_agg_col_names = [x for agg in aggregations for x in agg["new_columns"]]
-            # self._query_infos.from_ = left_table
-            # self._query_infos.selected = [
-            #     *(Field(name=f.name, table=left_table) for f in self._query_infos.selected),
-            #     *(Field(name=col_name, table=right_table) for col_name in all_agg_col_names),
-            # ]
-            # self._query_infos.joins.append((right_table, JoinType.left, tuple(on)))
+            agg_query: "QueryBuilder" = self.QUERY_CLS.from_(table.name).select(
+                *step.on, *agg_selected
+            )
+            agg_query = agg_query.groupby(*step.on)
+
+            all_agg_col_names: list[str] = [x for agg in step.aggregations for x in agg.new_columns]
+
+            query: "QueryBuilder" = self.QUERY_CLS.from_(current_query).select(*table.columns)
+            query = query.select(
+                *(Field(agg_col, table=agg_query) for agg_col in all_agg_col_names)
+            )
+            query = query.left_join(agg_query).on_field(*step.on)
+            selected_col_names = [*table.columns, *all_agg_col_names]
+
         else:
-            selected_cols = [*step.on, *agg_selected]
+            selected_cols: list[str | Field] = [*step.on, *agg_selected]
+            selected_col_names: list[str] = [*step.on, *(f.alias for f in agg_selected)]
             query: "QueryBuilder" = self.QUERY_CLS.from_(table.name).select(*selected_cols)
             query = query.groupby(*step.on)
             for col in step.on:
                 query = query.orderby(col, order=Order.asc)
-            return query, StepTable(columns=selected_cols)
+
+        return query, StepTable(columns=selected_col_names)
 
     def _get_single_condition_criterion(
         self, condition: "SimpleCondition", table: StepTable
