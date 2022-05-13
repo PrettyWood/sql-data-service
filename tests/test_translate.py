@@ -33,7 +33,8 @@ def test_translate() -> None:
     )
     response = client.post("/translate", json=translation_query.dict())
     assert response.status_code == 200
-    assert (
-        response.json()
-        == 'SELECT "username","age","city" FROM "AB123CD"."users" ORDER BY "age" ASC,"username" DESC'
+    assert response.json() == (
+        'WITH __step_0__ AS (SELECT "username","age","city" FROM "users") ,'
+        '__step_1__ AS (SELECT "username","age","city" FROM "__step_0__" ORDER BY "age" ASC,"username" DESC) '
+        'SELECT * FROM "__step_1__"'
     )
