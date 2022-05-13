@@ -45,6 +45,9 @@ class PostgreSQLTranslator(SQLTranslator):
                 new_agg_col = agg_fn(column_field).as_(aggregation.new_columns[i])
                 agg_selected.append(new_agg_col)
 
+        query: "QueryBuilder"
+        selected_col_names: list[str]
+
         if step.keep_original_granularity:
             current_query: "QueryBuilder" = self.QUERY_CLS.from_(table.name).select(*table.columns)
 
@@ -55,7 +58,7 @@ class PostgreSQLTranslator(SQLTranslator):
 
             all_agg_col_names: list[str] = [x for agg in step.aggregations for x in agg.new_columns]
 
-            query: "QueryBuilder" = self.QUERY_CLS.from_(current_query).select(*table.columns)
+            query = self.QUERY_CLS.from_(current_query).select(*table.columns)
             query = query.select(
                 *(Field(agg_col, table=agg_query) for agg_col in all_agg_col_names)
             )
@@ -64,8 +67,8 @@ class PostgreSQLTranslator(SQLTranslator):
 
         else:
             selected_cols: list[str | Field] = [*step.on, *agg_selected]
-            selected_col_names: list[str] = [*step.on, *(f.alias for f in agg_selected)]
-            query: "QueryBuilder" = self.QUERY_CLS.from_(table.name).select(*selected_cols)
+            selected_col_names = [*step.on, *(f.alias for f in agg_selected)]
+            query = self.QUERY_CLS.from_(table.name).select(*selected_cols)
             query = query.groupby(*step.on)
             for col in step.on:
                 query = query.orderby(col, order=Order.asc)

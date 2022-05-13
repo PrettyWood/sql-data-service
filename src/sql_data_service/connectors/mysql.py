@@ -34,7 +34,7 @@ class MySQLExecutor(SQLExecutor):
             ORDER BY ordinal_position
         """
         )
-        return [r["column_name"] for r in records]
+        return [r["COLUMN_NAME"] for r in records]
 
 
 SQLExecutor.register(MySQLExecutor)

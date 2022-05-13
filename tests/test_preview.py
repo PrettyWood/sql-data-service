@@ -19,7 +19,7 @@ ALL_TEST_TABLES = ["labels", "logins", "users"]
 @pytest.mark.parametrize(
     "sql_dialect",
     (
-        # SQLDialect.MYSQL,
+        SQLDialect.MYSQL,
         SQLDialect.POSTGRESQL,
     ),
 )
