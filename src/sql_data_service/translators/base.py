@@ -300,6 +300,8 @@ class SQLTranslator(ABC):
 
 def get_aggregate_function(agg_function: "AggregateFn") -> functions.AggregateFunction:
     match agg_function:
+        case "avg":
+            return functions.Avg
         case "sum":
             return functions.Sum
         case _:

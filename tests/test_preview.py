@@ -365,7 +365,7 @@ ALL_TEST_TABLES = ["labels", "logins", "users"]
             [
                 {"Label": "Label 4", "Cartel": "Cartel 2", "Value": 1},
                 {"Label": "Label 6", "Cartel": "Cartel 2", "Value": 5},
-                {"Label": "Label 2", "Cartel": "Cartel 1", "Value": 7},
+                {"Label": "Label 2", "Cartel": "Cartel 1", "Value": 6},
             ],
         ),
         (
@@ -381,7 +381,7 @@ ALL_TEST_TABLES = ["labels", "logins", "users"]
             ],
             [
                 {"Label": "Label 3", "Cartel": "Cartel 1", "Value": 20},
-                {"Label": "Label 5", "Cartel": "Cartel 2", "Value": 10},
+                {"Label": "Label 5", "Cartel": "Cartel 2", "Value": 12},
             ],
         ),
         # ~~~~~~~~~~~~~~~ ARGMAX ~~~~~~~~~~~~~~
@@ -392,7 +392,7 @@ ALL_TEST_TABLES = ["labels", "logins", "users"]
             ],
             [
                 {"Label": "Label 3", "Cartel": "Cartel 1", "Value": 20},
-                {"Label": "Label 5", "Cartel": "Cartel 2", "Value": 10},
+                {"Label": "Label 5", "Cartel": "Cartel 2", "Value": 12},
             ],
         ),
         # ~~~~~~~~~~~~~~~ ARGMIN ~~~~~~~~~~~~~~
@@ -402,7 +402,7 @@ ALL_TEST_TABLES = ["labels", "logins", "users"]
                 {"name": "argmin", "column": "Value", "groups": ["Cartel"]},
             ],
             [
-                {"Label": "Label 2", "Cartel": "Cartel 1", "Value": 7},
+                {"Label": "Label 2", "Cartel": "Cartel 1", "Value": 6},
                 {"Label": "Label 4", "Cartel": "Cartel 2", "Value": 1},
             ],
         ),
@@ -415,14 +415,27 @@ ALL_TEST_TABLES = ["labels", "logins", "users"]
             [
                 {"Label": "Label 1", "Cartel": "Cartel 1", "Value": 13},
                 {"Label": "Label 1", "Cartel": "Cartel 2", "Value": 1},
-                {"Label": "Label 2", "Cartel": "Cartel 1", "Value": 7},
+                {"Label": "Label 2", "Cartel": "Cartel 1", "Value": 6},
                 {"Label": "Label 3", "Cartel": "Cartel 1", "Value": 20},
             ],
         ),
-        # ~~~~~~~~~~~ AGGREGATE (count distinct) ~~~~~~~~~~~~~~
-        # ~~~~~~~~~~~ AGGREGATE (count) ~~~~~~~~~~~~~~
-        # ~~~~~~~~~~~ AGGREGATE (first) ~~~~~~~~~~~~~~
-        # ~~~~~~~~~~~ AGGREGATE (last) ~~~~~~~~~~~~~~
+        # ~~~~~~~~~~~ AGGREGATE (avg) ~~~~~~~~~~~~~~
+        (
+            [
+                {"name": "domain", "domain": "labels"},
+                {
+                    "name": "aggregate",
+                    "on": ["Cartel"],
+                    "aggregations": [
+                        {"new_columns": ["avgValue"], "agg_function": "avg", "columns": ["Value"]}
+                    ],
+                },
+            ],
+            [
+                {"Cartel": "Cartel 1", "avgValue": 13.0},
+                {"Cartel": "Cartel 2", "avgValue": 6.0},
+            ],
+        ),
         # ~~~~~~~~~~~ AGGREGATE (sum) ~~~~~~~~~~~~~~
         (
             [
@@ -436,8 +449,8 @@ ALL_TEST_TABLES = ["labels", "logins", "users"]
                 },
             ],
             [
-                {"Cartel": "Cartel 1", "sumValue": 40},
-                {"Cartel": "Cartel 2", "sumValue": 16},
+                {"Cartel": "Cartel 1", "sumValue": 39},
+                {"Cartel": "Cartel 2", "sumValue": 18},
             ],
         ),
         (
@@ -453,12 +466,12 @@ ALL_TEST_TABLES = ["labels", "logins", "users"]
                 },
             ],
             [
-                {"Label": "Label 1", "Cartel": "Cartel 1", "Value": 13, "sumValue": 40},
-                {"Label": "Label 2", "Cartel": "Cartel 1", "Value": 7, "sumValue": 40},
-                {"Label": "Label 3", "Cartel": "Cartel 1", "Value": 20, "sumValue": 40},
-                {"Label": "Label 4", "Cartel": "Cartel 2", "Value": 1, "sumValue": 16},
-                {"Label": "Label 5", "Cartel": "Cartel 2", "Value": 10, "sumValue": 16},
-                {"Label": "Label 6", "Cartel": "Cartel 2", "Value": 5, "sumValue": 16},
+                {"Label": "Label 1", "Cartel": "Cartel 1", "Value": 13, "sumValue": 39},
+                {"Label": "Label 2", "Cartel": "Cartel 1", "Value": 6, "sumValue": 39},
+                {"Label": "Label 3", "Cartel": "Cartel 1", "Value": 20, "sumValue": 39},
+                {"Label": "Label 4", "Cartel": "Cartel 2", "Value": 1, "sumValue": 18},
+                {"Label": "Label 5", "Cartel": "Cartel 2", "Value": 12, "sumValue": 18},
+                {"Label": "Label 6", "Cartel": "Cartel 2", "Value": 5, "sumValue": 18},
             ],
         ),
         # ~~~~~~~~~~~ COMPLEX (agg sum + top) ~~~~~~~~~~~~~~
@@ -475,8 +488,8 @@ ALL_TEST_TABLES = ["labels", "logins", "users"]
                 {"name": "top", "rank_on": "sumValue", "sort": "asc", "limit": 2},
             ],
             [
-                {"Cartel": "Cartel 2", "sumValue": 16},
-                {"Cartel": "Cartel 1", "sumValue": 40},
+                {"Cartel": "Cartel 2", "sumValue": 18},
+                {"Cartel": "Cartel 1", "sumValue": 39},
             ],
         ),
     ),
