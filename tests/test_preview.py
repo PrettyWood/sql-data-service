@@ -435,6 +435,24 @@ ALL_TEST_TABLES = ["labels", "logins", "users"]
                 {"Label": "Label 6", "Cartel": "Cartel 2", "Value": 5, "sumValue": 16},
             ],
         ),
+        # ~~~~~~~~~~~ COMPLEX (agg sum + top) ~~~~~~~~~~~~~~
+        (
+            [
+                {"name": "domain", "domain": "labels"},
+                {
+                    "name": "aggregate",
+                    "on": ["Cartel"],
+                    "aggregations": [
+                        {"new_columns": ["sumValue"], "agg_function": "sum", "columns": ["Value"]}
+                    ],
+                },
+                {"name": "top", "rank_on": "sumValue", "sort": "asc", "limit": 2},
+            ],
+            [
+                {"Cartel": "Cartel 2", "sumValue": 16},
+                {"Cartel": "Cartel 1", "sumValue": 40},
+            ],
+        ),
     ),
 )
 def test_get_preview_mysql(
