@@ -436,6 +436,277 @@ ALL_TEST_TABLES = ["labels", "logins", "users"]
                 {"Cartel": "Cartel 2", "avgValue": 6.0},
             ],
         ),
+        (
+            [
+                {"name": "domain", "domain": "labels"},
+                {
+                    "name": "aggregate",
+                    "on": ["Cartel"],
+                    "aggregations": [
+                        {"new_columns": ["avgValue"], "agg_function": "avg", "columns": ["Value"]}
+                    ],
+                    "keep_original_granularity": True,
+                },
+            ],
+            [
+                {"Label": "Label 1", "Cartel": "Cartel 1", "Value": 13, "avgValue": 13.0},
+                {"Label": "Label 2", "Cartel": "Cartel 1", "Value": 6, "avgValue": 13.0},
+                {"Label": "Label 3", "Cartel": "Cartel 1", "Value": 20, "avgValue": 13.0},
+                {"Label": "Label 4", "Cartel": "Cartel 2", "Value": 1, "avgValue": 6.0},
+                {"Label": "Label 5", "Cartel": "Cartel 2", "Value": 12, "avgValue": 6.0},
+                {"Label": "Label 6", "Cartel": "Cartel 2", "Value": 5, "avgValue": 6.0},
+            ],
+        ),
+        # ~~~~~~~~~~~ AGGREGATE (count) ~~~~~~~~~~~~~~
+        (
+            [
+                {"name": "domain", "domain": "users"},
+                {
+                    "name": "aggregate",
+                    "on": ["city"],
+                    "aggregations": [
+                        {
+                            "new_columns": ["countAge"],
+                            "agg_function": "count",
+                            "columns": ["age"],
+                        }
+                    ],
+                },
+            ],
+            [
+                {"city": "Bourg Palette", "countAge": 2},
+                {"city": "Firenze", "countAge": 1},
+                {"city": "Paris", "countAge": 1},
+            ],
+        ),
+        # ~~~~~~~~~~~ AGGREGATE (count distinct) ~~~~~~~~~~~~~~
+        (
+            [
+                {"name": "domain", "domain": "users"},
+                {
+                    "name": "aggregate",
+                    "on": ["city"],
+                    "aggregations": [
+                        {
+                            "new_columns": ["countDistinctAge"],
+                            "agg_function": "count distinct",
+                            "columns": ["age"],
+                        }
+                    ],
+                },
+            ],
+            [
+                {"city": "Bourg Palette", "countDistinctAge": 1},
+                {"city": "Firenze", "countDistinctAge": 1},
+                {"city": "Paris", "countDistinctAge": 1},
+            ],
+        ),
+        # # ~~~~~~~~~~~ AGGREGATE (first) ~~~~~~~~~~~~~~
+        # (
+        #     [
+        #         {"name": "domain", "domain": "users"},
+        #         {
+        #             "name": "aggregate",
+        #             "on": ["city"],
+        #             "aggregations": [
+        #                 {
+        #                     "new_columns": ["firstUsername"],
+        #                     "agg_function": "first",
+        #                     "columns": ["username"],
+        #                 }
+        #             ],
+        #         },
+        #     ],
+        #     [
+        #         {"firstUsername": "Eric", "city": "Paris"},
+        #         {"firstUsername": "Chiara", "city": "Firenze"},
+        #         {"firstUsername": "Pikachu", "city": "Bourg Palette"},
+        #     ],
+        # ),
+        # (
+        #     [
+        #         {"name": "domain", "domain": "users"},
+        #         {
+        #             "name": "aggregate",
+        #             "on": ["city"],
+        #             "aggregations": [
+        #                 {
+        #                     "new_columns": ["firstUsername"],
+        #                     "agg_function": "first",
+        #                     "columns": ["username"],
+        #                 }
+        #             ],
+        #             "keep_original_granularity": True,
+        #         },
+        #     ],
+        #     [
+        #         {"username": "Eric", "age": 30, "city": "Paris", "firstUsername": "Eric"},
+        #         {"username": "Chiara", "age": 31, "city": "Firenze", "firstUsername": "Chiara"},
+        #         {
+        #             "username": "Pikachu",
+        #             "age": 7,
+        #             "city": "Bourg Palette",
+        #             "firstUsername": "Pikachu",
+        #         },
+        #         {
+        #             "username": "Bulbi",
+        #             "age": 7,
+        #             "city": "Bourg Palette",
+        #             "firstUsername": "Pikachu",
+        #         },
+        #     ],
+        # ),
+        # # ~~~~~~~~~~~ AGGREGATE (last) ~~~~~~~~~~~~~~
+        # (
+        #     [
+        #         {"name": "domain", "domain": "users"},
+        #         {
+        #             "name": "aggregate",
+        #             "on": ["city"],
+        #             "aggregations": [
+        #                 {"new_columns": ["lastUsername"], "agg_function": "last", "columns": ["username"]}
+        #             ],
+        #         },
+        #     ],
+        #     [
+        #         {"lastUsername": "Eric", "city": "Paris"},
+        #         {"lastUsername": "Chiara", "city": "Firenze"},
+        #         {"lastUsername": "Bulbi", "city": "Bourg Palette"},
+        #     ],
+        # ),
+        # (
+        #     [
+        #         {"name": "domain", "domain": "users"},
+        #         {
+        #             "name": "aggregate",
+        #             "on": ["city"],
+        #             "aggregations": [
+        #                 {"new_columns": ["lastUsername"], "agg_function": "last", "columns": ["username"]}
+        #             ],
+        #             "keep_original_granularity": True,
+        #         },
+        #     ],
+        #     [
+        #         {"username": "Eric", "age": 30, "city": "Paris", "lastUsername": "Eric"},
+        #         {"username": "Chiara", "age": 31, "city": "Firenze", "lastUsername": "Chiara"},
+        #         {"username": "Pikachu", "age": 7, "city": "Bourg Palette", "lastUsername": "Bulbi"},
+        #         {"username": "Bulbi", "age": 7, "city": "Bourg Palette", "lastUsername": "Bulbi"},
+        #     ],
+        # ),
+        # ~~~~~~~~~~~ AGGREGATE (max) ~~~~~~~~~~~~~~
+        (
+            [
+                {"name": "domain", "domain": "labels"},
+                {
+                    "name": "aggregate",
+                    "on": ["Cartel"],
+                    "aggregations": [
+                        {"new_columns": ["maxValue"], "agg_function": "max", "columns": ["Value"]}
+                    ],
+                },
+            ],
+            [
+                {"Cartel": "Cartel 1", "maxValue": 20},
+                {"Cartel": "Cartel 2", "maxValue": 12},
+            ],
+        ),
+        (
+            [
+                {"name": "domain", "domain": "labels"},
+                {
+                    "name": "aggregate",
+                    "on": ["Cartel"],
+                    "aggregations": [
+                        {"new_columns": ["maxValue"], "agg_function": "max", "columns": ["Value"]}
+                    ],
+                    "keep_original_granularity": True,
+                },
+            ],
+            [
+                {"Label": "Label 1", "Cartel": "Cartel 1", "Value": 13, "maxValue": 20},
+                {"Label": "Label 2", "Cartel": "Cartel 1", "Value": 6, "maxValue": 20},
+                {"Label": "Label 3", "Cartel": "Cartel 1", "Value": 20, "maxValue": 20},
+                {"Label": "Label 4", "Cartel": "Cartel 2", "Value": 1, "maxValue": 12},
+                {"Label": "Label 5", "Cartel": "Cartel 2", "Value": 12, "maxValue": 12},
+                {"Label": "Label 6", "Cartel": "Cartel 2", "Value": 5, "maxValue": 12},
+            ],
+        ),
+        # ~~~~~~~~~~~ AGGREGATE (min) ~~~~~~~~~~~~~~
+        (
+            [
+                {"name": "domain", "domain": "labels"},
+                {
+                    "name": "aggregate",
+                    "on": ["Cartel"],
+                    "aggregations": [
+                        {"new_columns": ["minValue"], "agg_function": "min", "columns": ["Value"]}
+                    ],
+                },
+            ],
+            [
+                {"Cartel": "Cartel 1", "minValue": 6},
+                {"Cartel": "Cartel 2", "minValue": 1},
+            ],
+        ),
+        (
+            [
+                {"name": "domain", "domain": "labels"},
+                {
+                    "name": "aggregate",
+                    "on": ["Cartel"],
+                    "aggregations": [
+                        {"new_columns": ["minValue"], "agg_function": "min", "columns": ["Value"]}
+                    ],
+                    "keep_original_granularity": True,
+                },
+            ],
+            [
+                {"Label": "Label 1", "Cartel": "Cartel 1", "Value": 13, "minValue": 6},
+                {"Label": "Label 2", "Cartel": "Cartel 1", "Value": 6, "minValue": 6},
+                {"Label": "Label 3", "Cartel": "Cartel 1", "Value": 20, "minValue": 6},
+                {"Label": "Label 4", "Cartel": "Cartel 2", "Value": 1, "minValue": 1},
+                {"Label": "Label 5", "Cartel": "Cartel 2", "Value": 12, "minValue": 1},
+                {"Label": "Label 6", "Cartel": "Cartel 2", "Value": 5, "minValue": 1},
+            ],
+        ),
+        # ~~~~~~~~~~~ AGGREGATE (sum) ~~~~~~~~~~~~~~
+        (
+            [
+                {"name": "domain", "domain": "labels"},
+                {
+                    "name": "aggregate",
+                    "on": ["Cartel"],
+                    "aggregations": [
+                        {"new_columns": ["sumValue"], "agg_function": "sum", "columns": ["Value"]}
+                    ],
+                },
+            ],
+            [
+                {"Cartel": "Cartel 1", "sumValue": 39},
+                {"Cartel": "Cartel 2", "sumValue": 18},
+            ],
+        ),
+        (
+            [
+                {"name": "domain", "domain": "labels"},
+                {
+                    "name": "aggregate",
+                    "on": ["Cartel"],
+                    "aggregations": [
+                        {"new_columns": ["sumValue"], "agg_function": "sum", "columns": ["Value"]}
+                    ],
+                    "keep_original_granularity": True,
+                },
+            ],
+            [
+                {"Label": "Label 1", "Cartel": "Cartel 1", "Value": 13, "sumValue": 39},
+                {"Label": "Label 2", "Cartel": "Cartel 1", "Value": 6, "sumValue": 39},
+                {"Label": "Label 3", "Cartel": "Cartel 1", "Value": 20, "sumValue": 39},
+                {"Label": "Label 4", "Cartel": "Cartel 2", "Value": 1, "sumValue": 18},
+                {"Label": "Label 5", "Cartel": "Cartel 2", "Value": 12, "sumValue": 18},
+                {"Label": "Label 6", "Cartel": "Cartel 2", "Value": 5, "sumValue": 18},
+            ],
+        ),
         # ~~~~~~~~~~~ AGGREGATE (sum) ~~~~~~~~~~~~~~
         (
             [

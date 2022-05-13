@@ -91,6 +91,27 @@ class SQLTranslator(ABC):
 
     # All other methods implement step from https://weaverbird.toucantoco.com/docs/steps/,
     # the name of the method being the name of the step and the kwargs the rest of the params
+    def _get_aggregate_function(
+        self: Self, agg_function: "AggregateFn"
+    ) -> functions.AggregateFunction:
+        match agg_function:
+            case "avg":
+                return functions.Avg
+            case "count":
+                return functions.Count
+            case "count distinct":
+                return CountDistinct
+            case "max":
+                return functions.Max
+            case "min":
+                return functions.Min
+            case "sum":
+                return functions.Sum
+            case _:  # pragma: no cover
+                raise NotImplementedError(
+                    f"[{self.DIALECT}] Aggregation for {agg_function!r} is not yet implemented"
+                )
+
     def aggregate(
         self: Self, *, step: "AggregateStep", table: StepTable
     ) -> tuple["QueryBuilder", StepTable]:
@@ -98,7 +119,7 @@ class SQLTranslator(ABC):
         agg_selected: list[Field] = []
 
         for aggregation in step.aggregations:
-            agg_fn = get_aggregate_function(aggregation.agg_function)
+            agg_fn = self._get_aggregate_function(aggregation.agg_function)
             for i, column_name in enumerate(aggregation.columns):
                 column_field: Field = the_table[column_name]
                 new_agg_col = agg_fn(column_field).as_(aggregation.new_columns[i])
@@ -298,11 +319,7 @@ class SQLTranslator(ABC):
         return query, StepTable(columns=table.columns)
 
 
-def get_aggregate_function(agg_function: "AggregateFn") -> functions.AggregateFunction:
-    match agg_function:
-        case "avg":
-            return functions.Avg
-        case "sum":
-            return functions.Sum
-        case _:
-            raise NotImplementedError(f"Aggregation for {agg_function!r} is not yet implemented")
+class CountDistinct(functions.Count):  # type: ignore[misc]
+    def __init__(self, param: str | Field, alias: str | None = None) -> None:
+        super().__init__(param, alias)
+        self._distinct = True
