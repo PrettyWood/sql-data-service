@@ -18,13 +18,16 @@ if TYPE_CHECKING:
 
     from pypika.queries import QueryBuilder
     from weaverbird.pipeline import PipelineStep
-    from weaverbird.pipeline.conditions import (
-        Condition,
-        ConditionComboAnd,
-        ConditionComboOr,
-        SimpleCondition,
+    from weaverbird.pipeline.conditions import Condition, SimpleCondition
+    from weaverbird.pipeline.steps import (
+        DomainStep,
+        FilterStep,
+        LowercaseStep,
+        RenameStep,
+        SelectStep,
+        SortStep,
+        UppercaseStep,
     )
-    from weaverbird.pipeline.steps import *
 
     class SingleFilterCondition(TypedDict):
         column: str
@@ -181,25 +184,26 @@ class SQLTranslator(ABC):
                 raise KeyError(f"Operator {condition.operator!r} does not exist")
 
     def _get_filter_criterion(self: Self, condition: "Condition", table: StepTable) -> Criterion:
-        match type(condition):
-            case 1:
+        from weaverbird.pipeline.conditions import (
+            ConditionComboAnd,
+            ConditionComboOr,
+            SimpleCondition,
+        )
+
+        match condition.__class__.__name__:
+            case "ConditionComboOr":
+                assert isinstance(condition, ConditionComboOr)
                 return Criterion.any(
-                    (
-                        self._get_filter_criterion(condition, table)
-                        for condition in cast("ConditionComboOr", condition)["or_"]
-                    )
+                    (self._get_filter_criterion(condition, table) for condition in condition.or_)
                 )
-            case 2:
+            case "ConditionComboAnd":
+                assert isinstance(condition, ConditionComboAnd)
                 return Criterion.all(
-                    (
-                        self._get_filter_criterion(condition, table)
-                        for condition in cast("ConditionComboAnd", condition)["and_"]
-                    )
+                    (self._get_filter_criterion(condition, table) for condition in condition.and_)
                 )
             case _:
-                return self._get_single_condition_criterion(
-                    cast("SimpleCondition", condition), table
-                )
+                assert isinstance(condition, SimpleCondition)
+                return self._get_single_condition_criterion(condition, table)
 
     def filter(
         self: Self, *, step: "FilterStep", table: StepTable
@@ -211,20 +215,23 @@ class SQLTranslator(ABC):
         )
         return query, StepTable(columns=table.columns)
 
-    # def lowercase(self: Self, *, column: str) -> Self:
-    #     col_aliases = [c.alias or c.name for c in self._query_infos.selected]
-    #     col_real_names = [c.name for c in self._query_infos.selected]
-    #     idx = col_aliases.index(column)
-    #     column_field: Field = getattr(self._query_infos.from_, col_real_names[idx])
-    #     self._query_infos.selected[idx] = functions.Lower(column_field).as_(col_aliases[idx])
-    #     return self
+    def lowercase(
+        self: Self, *, step: "LowercaseStep", table: StepTable
+    ) -> tuple["QueryBuilder", StepTable]:
+        col_idx = table.columns.index(step.column)
+        col_field: Field = Table(table.name)[step.column]
+
+        new_cols = list(table.columns)
+        new_cols[col_idx] = functions.Lower(col_field).as_(new_cols[col_idx])
+
+        query: "QueryBuilder" = self.QUERY_CLS.from_(table.name).select(*new_cols)
+        return query, StepTable(columns=table.columns)
 
     def rename(
         self: Self, *, step: "RenameStep", table: StepTable
     ) -> tuple["QueryBuilder", StepTable]:
         old_name, new_name = step.to_rename
 
-        new_selected_cols: list[str] = []
         selected_col_fields: list[Field] = []
 
         for col_name in table.columns:
@@ -234,7 +241,7 @@ class SQLTranslator(ABC):
                 selected_col_fields.append(Field(name=col_name))
 
         query = self.QUERY_CLS.from_(table.name).select(*selected_col_fields)
-        return query, StepTable(columns=new_selected_cols)
+        return query, StepTable(columns=[f.alias or f.name for f in selected_col_fields])
 
     def select(
         self: Self, *, step: "SelectStep", table: StepTable
@@ -278,13 +285,17 @@ class SQLTranslator(ABC):
     # def uniquegroups(self: Self, *, on: Sequence[str]) -> Self:
     #     raise NotImplementedError(f"[{self.DIALECT}] uniquegroups is not implemented")
 
-    # def uppercase(self: Self, *, column: str) -> Self:
-    #     col_aliases = [c.alias or c.name for c in self._query_infos.selected]
-    #     col_real_names = [c.name for c in self._query_infos.selected]
-    #     idx = col_aliases.index(column)
-    #     column_field: Field = getattr(self._query_infos.from_, col_real_names[idx])
-    #     self._query_infos.selected[idx] = functions.Upper(column_field).as_(col_aliases[idx])
-    #     return self
+    def uppercase(
+        self: Self, *, step: "UppercaseStep", table: StepTable
+    ) -> tuple["QueryBuilder", StepTable]:
+        col_idx = table.columns.index(step.column)
+        col_field: Field = Table(table.name)[step.column]
+
+        new_cols = list(table.columns)
+        new_cols[col_idx] = functions.Upper(col_field).as_(new_cols[col_idx])
+
+        query: "QueryBuilder" = self.QUERY_CLS.from_(table.name).select(*new_cols)
+        return query, StepTable(columns=table.columns)
 
 
 def get_aggregate_function(agg_function: "AggregationFunction") -> functions.AggregateFunction:
