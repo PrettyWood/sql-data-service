@@ -48,6 +48,19 @@ ALL_TEST_TABLES = ["labels", "logins", "users"]
                 {"username": "Bulbi", "age": 7},
             ],
         ),
+        # ~~~~~~~~~~~~~~~ DELETE ~~~~~~~~~~~~~~
+        (
+            [
+                {"name": "domain", "domain": "users"},
+                {"name": "delete", "columns": ["username", "age"]},
+            ],
+            [
+                {"city": "Paris"},
+                {"city": "Firenze"},
+                {"city": "Bourg Palette"},
+                {"city": "Bourg Palette"},
+            ],
+        ),
         # ~~~~~~~~~~~~~~~ RENAME ~~~~~~~~~~~~~~
         (
             [
@@ -343,74 +356,74 @@ ALL_TEST_TABLES = ["labels", "logins", "users"]
                 {"first name": "bulbi", "age": 7, "city": "Bourg Palette"},
             ],
         ),
-        # # ~~~~~~~~~~~~~~~ TOP ~~~~~~~~~~~~~~
-        # (
-        #     [
-        #         {"name": "domain", "domain": "labels"},
-        #         {"name": "top", "rank_on": "Value", "sort": "asc", "limit": 3},
-        #     ],
-        #     [
-        #         {"Label": "Label 4", "Cartel": "Cartel 2", "Value": 1},
-        #         {"Label": "Label 6", "Cartel": "Cartel 2", "Value": 5},
-        #         {"Label": "Label 2", "Cartel": "Cartel 1", "Value": 7},
-        #     ],
-        # ),
-        # (
-        #     [
-        #         {"name": "domain", "domain": "labels"},
-        #         {
-        #             "name": "top",
-        #             "rank_on": "Value",
-        #             "groups": ["Cartel"],
-        #             "sort": "desc",
-        #             "limit": 1,
-        #         },
-        #     ],
-        #     [
-        #         {"Label": "Label 3", "Cartel": "Cartel 1", "Value": 20},
-        #         {"Label": "Label 5", "Cartel": "Cartel 2", "Value": 10},
-        #     ],
-        # ),
-        # # ~~~~~~~~~~~~~~~ ARGMAX ~~~~~~~~~~~~~~
-        # (
-        #     [
-        #         {"name": "domain", "domain": "labels"},
-        #         {"name": "argmax", "column": "Value", "groups": ["Cartel"]},
-        #     ],
-        #     [
-        #         {"Label": "Label 3", "Cartel": "Cartel 1", "Value": 20},
-        #         {"Label": "Label 5", "Cartel": "Cartel 2", "Value": 10},
-        #     ],
-        # ),
-        # # ~~~~~~~~~~~~~~~ ARGMIN ~~~~~~~~~~~~~~
-        # (
-        #     [
-        #         {"name": "domain", "domain": "labels"},
-        #         {"name": "argmin", "column": "Value", "groups": ["Cartel"]},
-        #     ],
-        #     [
-        #         {"Label": "Label 2", "Cartel": "Cartel 1", "Value": 7},
-        #         {"Label": "Label 4", "Cartel": "Cartel 2", "Value": 1},
-        #     ],
-        # ),
-        # # ~~~~~~~~~~~ UNIQUE GROUPS~~~~~~~~~~~~~~
-        # (
-        #     [
-        #         {"name": "domain", "domain": "labels2"},
-        #         {"name": "uniquegroups", "on": ["Label", "Cartel"]},
-        #     ],
-        #     [
-        #         {"Label": "Label 1", "Cartel": "Cartel 1", "Value": 13},
-        #         {"Label": "Label 1", "Cartel": "Cartel 2", "Value": 1},
-        #         {"Label": "Label 2", "Cartel": "Cartel 1", "Value": 7},
-        #         {"Label": "Label 3", "Cartel": "Cartel 1", "Value": 20},
-        #     ],
-        # ),
-        # # ~~~~~~~~~~~ AGGREGATE (count distinct) ~~~~~~~~~~~~~~
-        # # ~~~~~~~~~~~ AGGREGATE (count) ~~~~~~~~~~~~~~
-        # # ~~~~~~~~~~~ AGGREGATE (first) ~~~~~~~~~~~~~~
-        # # ~~~~~~~~~~~ AGGREGATE (last) ~~~~~~~~~~~~~~
-        # # ~~~~~~~~~~~ AGGREGATE (sum) ~~~~~~~~~~~~~~
+        # ~~~~~~~~~~~~~~~ TOP ~~~~~~~~~~~~~~
+        (
+            [
+                {"name": "domain", "domain": "labels"},
+                {"name": "top", "rank_on": "Value", "sort": "asc", "limit": 3},
+            ],
+            [
+                {"Label": "Label 4", "Cartel": "Cartel 2", "Value": 1},
+                {"Label": "Label 6", "Cartel": "Cartel 2", "Value": 5},
+                {"Label": "Label 2", "Cartel": "Cartel 1", "Value": 7},
+            ],
+        ),
+        (
+            [
+                {"name": "domain", "domain": "labels"},
+                {
+                    "name": "top",
+                    "rank_on": "Value",
+                    "groups": ["Cartel"],
+                    "sort": "desc",
+                    "limit": 1,
+                },
+            ],
+            [
+                {"Label": "Label 3", "Cartel": "Cartel 1", "Value": 20},
+                {"Label": "Label 5", "Cartel": "Cartel 2", "Value": 10},
+            ],
+        ),
+        # ~~~~~~~~~~~~~~~ ARGMAX ~~~~~~~~~~~~~~
+        (
+            [
+                {"name": "domain", "domain": "labels"},
+                {"name": "argmax", "column": "Value", "groups": ["Cartel"]},
+            ],
+            [
+                {"Label": "Label 3", "Cartel": "Cartel 1", "Value": 20},
+                {"Label": "Label 5", "Cartel": "Cartel 2", "Value": 10},
+            ],
+        ),
+        # ~~~~~~~~~~~~~~~ ARGMIN ~~~~~~~~~~~~~~
+        (
+            [
+                {"name": "domain", "domain": "labels"},
+                {"name": "argmin", "column": "Value", "groups": ["Cartel"]},
+            ],
+            [
+                {"Label": "Label 2", "Cartel": "Cartel 1", "Value": 7},
+                {"Label": "Label 4", "Cartel": "Cartel 2", "Value": 1},
+            ],
+        ),
+        # ~~~~~~~~~~~ UNIQUE GROUPS~~~~~~~~~~~~~~
+        (
+            [
+                {"name": "domain", "domain": "labels2"},
+                {"name": "uniquegroups", "on": ["Label", "Cartel"]},
+            ],
+            [
+                {"Label": "Label 1", "Cartel": "Cartel 1", "Value": 13},
+                {"Label": "Label 1", "Cartel": "Cartel 2", "Value": 1},
+                {"Label": "Label 2", "Cartel": "Cartel 1", "Value": 7},
+                {"Label": "Label 3", "Cartel": "Cartel 1", "Value": 20},
+            ],
+        ),
+        # ~~~~~~~~~~~ AGGREGATE (count distinct) ~~~~~~~~~~~~~~
+        # ~~~~~~~~~~~ AGGREGATE (count) ~~~~~~~~~~~~~~
+        # ~~~~~~~~~~~ AGGREGATE (first) ~~~~~~~~~~~~~~
+        # ~~~~~~~~~~~ AGGREGATE (last) ~~~~~~~~~~~~~~
+        # ~~~~~~~~~~~ AGGREGATE (sum) ~~~~~~~~~~~~~~
         # (
         #     [
         #         {"name": "domain", "domain": "labels"},

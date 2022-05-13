@@ -1,10 +1,10 @@
 from abc import ABC
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 # from typing_extensions import Self
-from typing import TYPE_CHECKING, Any, Callable, Literal, Mapping, Sequence, TypeVar, cast
+from typing import TYPE_CHECKING, Any, Callable, Literal, Mapping, Sequence, TypeVar
 
-from pypika import Criterion, Field, JoinType, Order, Query, Schema, Table, functions
+from pypika import Criterion, Field, Order, Query, Schema, Table, functions
 
 from sql_data_service.dialects import SQLDialect
 
@@ -14,57 +14,24 @@ Self = TypeVar("Self", bound="SQLTranslator")
 
 
 if TYPE_CHECKING:
-    from typing import TypedDict
-
     from pypika.queries import QueryBuilder
     from weaverbird.pipeline import PipelineStep
     from weaverbird.pipeline.conditions import Condition, SimpleCondition
     from weaverbird.pipeline.steps import (
+        AggregateStep,
+        ArgmaxStep,
+        ArgminStep,
+        DeleteStep,
         DomainStep,
         FilterStep,
         LowercaseStep,
         RenameStep,
         SelectStep,
         SortStep,
+        TopStep,
+        UniqueGroupsStep,
         UppercaseStep,
     )
-
-    class SingleFilterCondition(TypedDict):
-        column: str
-        operator: Literal[
-            "eq",
-            "ne",
-            "gt",
-            "ge",
-            "lt",
-            "le",
-            "in",
-            "nin",
-            "matches",
-            "notmatches",
-            "isnull",
-            "notnull",
-        ]
-        value: Any
-
-    class OrFilterCondition(TypedDict):
-        or_: list["FilterCondition"]  # type: ignore
-
-    class AndFilterCondition(TypedDict):
-        and_: list["FilterCondition"]  # type: ignore
-
-    FilterCondition = SingleFilterCondition | OrFilterCondition | AndFilterCondition  # type: ignore
-
-    class SortColumn(TypedDict):
-        column: str
-        order: Literal["asc", "desc"]
-
-    AggregationFunction = Literal["sum"]
-
-    class Aggregation(TypedDict):
-        new_columns: list[str]
-        agg_function: AggregationFunction
-        columns: list[str]
 
 
 @dataclass(kw_only=True)
@@ -123,20 +90,28 @@ class SQLTranslator(ABC):
 
     # All other methods implement step from https://weaverbird.toucantoco.com/docs/steps/,
     # the name of the method being the name of the step and the kwargs the rest of the params
-    # def argmax(self: Self, *, column: str, groups: Sequence[str]) -> Self:
-    #     return self.top(rank_on=column, limit=1, sort="desc", groups=groups)
+    def aggregate(
+        self: Self, *, step: "AggregateStep", table: StepTable
+    ) -> tuple["QueryBuilder", StepTable]:
+        raise NotImplementedError(f"[{self.DIALECT}] aggregate is not implemented")
 
-    # def argmin(self: Self, *, column: str, groups: Sequence[str]) -> Self:
-    #     return self.top(rank_on=column, limit=1, sort="asc", groups=groups)
+    def argmax(
+        self: Self, *, step: "ArgmaxStep", table: StepTable
+    ) -> tuple["QueryBuilder", StepTable]:
+        from weaverbird.pipeline.steps import TopStep
 
-    # def aggregate(
-    #     self: Self,
-    #     *,
-    #     on: Sequence[str],
-    #     aggregations: Sequence["Aggregation"],
-    #     keep_original_granularity: bool = False,
-    # ) -> Self:
-    #     raise NotImplementedError(f"[{self.DIALECT}] aggregate is not implemented")
+        return self.top(
+            step=TopStep(rank_on=step.column, sort="desc", limit=1, groups=step.groups), table=table
+        )
+
+    def argmin(
+        self: Self, *, step: "ArgminStep", table: StepTable
+    ) -> tuple["QueryBuilder", StepTable]:
+        from weaverbird.pipeline.steps import TopStep
+
+        return self.top(
+            step=TopStep(rank_on=step.column, sort="asc", limit=1, groups=step.groups), table=table
+        )
 
     def domain(
         self: Self,
@@ -144,18 +119,19 @@ class SQLTranslator(ABC):
         step: "DomainStep",
     ) -> tuple["QueryBuilder", StepTable]:
         try:
-            selected_cols = self._tables_columns[step.domain]
+            selected_cols = list(self._tables_columns[step.domain])
         except KeyError:
             selected_cols = ["*"]
 
-        query = self.QUERY_CLS.from_(step.domain).select(*selected_cols)
+        query: "QueryBuilder" = self.QUERY_CLS.from_(step.domain).select(*selected_cols)
         return query, StepTable(columns=selected_cols)
 
-    # def delete(self: Self, *, columns: Sequence[str]) -> Self:
-    #     self._query_infos.selected = [
-    #         col_field for col_field in self._query_infos.selected if col_field.name not in columns
-    #     ]
-    #     return self
+    def delete(
+        self: Self, *, step: "DeleteStep", table: StepTable
+    ) -> tuple["QueryBuilder", StepTable]:
+        new_columns = [c for c in table.columns if c not in step.columns]
+        query: "QueryBuilder" = self.QUERY_CLS.from_(table.name).select(*new_columns)
+        return query, StepTable(columns=new_columns)
 
     def _get_single_condition_criterion(
         self: Self, condition: "SimpleCondition", table: StepTable
@@ -208,11 +184,8 @@ class SQLTranslator(ABC):
     def filter(
         self: Self, *, step: "FilterStep", table: StepTable
     ) -> tuple["QueryBuilder", StepTable]:
-        query: "QueryBuilder" = (
-            self.QUERY_CLS.from_(table.name)
-            .select(*table.columns)
-            .where(self._get_filter_criterion(step.condition, table))
-        )
+        query: "QueryBuilder" = self.QUERY_CLS.from_(table.name).select(*table.columns)
+        query = query.where(self._get_filter_criterion(step.condition, table))
         return query, StepTable(columns=table.columns)
 
     def lowercase(
@@ -240,13 +213,13 @@ class SQLTranslator(ABC):
             else:
                 selected_col_fields.append(Field(name=col_name))
 
-        query = self.QUERY_CLS.from_(table.name).select(*selected_col_fields)
+        query: "QueryBuilder" = self.QUERY_CLS.from_(table.name).select(*selected_col_fields)
         return query, StepTable(columns=[f.alias or f.name for f in selected_col_fields])
 
     def select(
         self: Self, *, step: "SelectStep", table: StepTable
     ) -> tuple["QueryBuilder", StepTable]:
-        query = self.QUERY_CLS.from_(table.name).select(*step.columns)
+        query: "QueryBuilder" = self.QUERY_CLS.from_(table.name).select(*step.columns)
         return query, StepTable(columns=step.columns)
 
     def sort(self: Self, *, step: "SortStep", table: StepTable) -> tuple["QueryBuilder", StepTable]:
@@ -259,31 +232,19 @@ class SQLTranslator(ABC):
 
         return query, StepTable(columns=table.columns)
 
-    # def _top_with_groups(
-    #     self: Self, rank_on: str, limit: int, order: Order, groups: Sequence[str]
-    # ) -> None:
-    #     raise NotImplementedError(f"[{self.DIALECT}] top is not implemented with groups")
+    def top(self: Self, *, step: "TopStep", table: StepTable) -> tuple["QueryBuilder", StepTable]:
+        if step.groups:
+            raise NotImplementedError(f"[{self.DIALECT}] top is not implemented with groups")
 
-    # def top(
-    #     self: Self,
-    #     *,
-    #     rank_on: str,
-    #     limit: int,
-    #     sort: Literal["asc", "desc"],
-    #     groups: Sequence[str],
-    # ) -> Self:
-    #     order = Order.desc if sort == "desc" else Order.asc
+        query: "QueryBuilder" = self.QUERY_CLS.from_(table.name).select(*table.columns)
+        query = query.orderby(step.rank_on, order=Order.desc if step.sort == "desc" else Order.asc)
+        query = query.limit(step.limit)
+        return query, StepTable(columns=table.columns)
 
-    #     if groups:
-    #         self._top_with_groups(rank_on, limit, order, groups)
-    #     else:
-    #         self._query_infos.orders[rank_on] = order
-    #         self._query_infos.limit = limit
-
-    #     return self
-
-    # def uniquegroups(self: Self, *, on: Sequence[str]) -> Self:
-    #     raise NotImplementedError(f"[{self.DIALECT}] uniquegroups is not implemented")
+    def uniquegroups(
+        self: Self, *, step: "UniqueGroupsStep", table: StepTable
+    ) -> tuple["QueryBuilder", StepTable]:
+        raise NotImplementedError(f"[{self.DIALECT}] uniquegroups is not implemented")
 
     def uppercase(
         self: Self, *, step: "UppercaseStep", table: StepTable
