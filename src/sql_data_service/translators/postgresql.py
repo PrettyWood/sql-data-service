@@ -7,12 +7,19 @@ from pypika.terms import AnalyticFunction, BasicCriterion, Criterion
 
 from sql_data_service.dialects import SQLDialect
 
-from .base import SQLTranslator, get_aggregate_function
+from .base import SQLTranslator, StepTable, get_aggregate_function
 
 Self = TypeVar("Self", bound="PostgreSQLTranslator")
 
 if TYPE_CHECKING:
-    from .base import Aggregation, SingleFilterCondition
+    from weaverbird.pipeline.conditions import (
+        Condition,
+        ConditionComboAnd,
+        ConditionComboOr,
+        SimpleCondition,
+    )
+
+    from .base import Aggregation
 
 
 class PostgreSQLMatching(Comparator):  # type: ignore[misc]
@@ -79,23 +86,25 @@ class PostgreSQLTranslator(SQLTranslator):
 
         return self
 
-    def _get_single_condition_criterion(self, condition: "SingleFilterCondition") -> Criterion:
-        column_field: Field = getattr(self._query_infos.from_, condition["column"])
-        match condition["operator"]:
+    def _get_single_condition_criterion(
+        self, condition: "SimpleCondition", table: StepTable
+    ) -> Criterion:
+        column_field: Field = Table(table.name)[condition.column]
+        match condition.operator:
             case "matches":
                 return BasicCriterion(
                     PostgreSQLMatching.similar_to,
                     column_field,
-                    column_field.wrap_constant(_compliant_regex(condition["value"])),
+                    column_field.wrap_constant(_compliant_regex(condition.value)),
                 )
             case "notmatches":
                 return BasicCriterion(
                     PostgreSQLMatching.not_similar_to,
                     column_field,
-                    column_field.wrap_constant(_compliant_regex(condition["value"])),
+                    column_field.wrap_constant(_compliant_regex(condition.value)),
                 )
             case _:
-                return super()._get_single_condition_criterion(condition)
+                return super()._get_single_condition_criterion(condition, table)
 
     def _top_with_groups(
         self: Self, rank_on: str, limit: int, order: Order, groups: Sequence[str]

@@ -2,7 +2,7 @@ from abc import ABC
 from dataclasses import dataclass, field
 
 # from typing_extensions import Self
-from typing import TYPE_CHECKING, Any, Literal, Mapping, Sequence, TypeVar, cast
+from typing import TYPE_CHECKING, Any, Callable, Literal, Mapping, Sequence, TypeVar, cast
 
 from pypika import Criterion, Field, JoinType, Order, Query, Schema, Table, functions
 
@@ -17,6 +17,14 @@ if TYPE_CHECKING:
     from typing import TypedDict
 
     from pypika.queries import QueryBuilder
+    from weaverbird.pipeline import PipelineStep
+    from weaverbird.pipeline.conditions import (
+        Condition,
+        ConditionComboAnd,
+        ConditionComboOr,
+        SimpleCondition,
+    )
+    from weaverbird.pipeline.steps import *
 
     class SingleFilterCondition(TypedDict):
         column: str
@@ -56,17 +64,10 @@ if TYPE_CHECKING:
         columns: list[str]
 
 
-@dataclass
-class QueryInfos:
-    distinct_on: list[Field] = field(default_factory=list)
-    selected: list[Field] = field(default_factory=list)
-    from_: Table = Table("")
-    wheres: list[Criterion] = field(default_factory=list)
-    groupbys: list[Field] = field(default_factory=list)
-    orders: dict[str, str] = field(default_factory=dict)
-    limit: int | None = None
-    sub_queries: dict[str, Query] = field(default_factory=dict)
-    joins: list[tuple[Table, JoinType, tuple[str, ...]]] = field(default_factory=list)
+@dataclass(kw_only=True)
+class StepTable:
+    columns: list[str]
+    name: str | None = None
 
 
 class SQLTranslator(ABC):
@@ -81,185 +82,209 @@ class SQLTranslator(ABC):
     ) -> None:
         self._tables_columns: Mapping[str, Sequence[str]] = tables_columns or {}
         self._db_schema: Schema | None = Schema(db_schema) if db_schema is not None else None
-        self._query_infos = QueryInfos()
 
     def __init_subclass__(cls) -> None:
         ALL_TRANSLATORS[cls.DIALECT] = cls
 
-    def get_query(self: Self) -> "QueryBuilder":
+    def get_query(self: Self, *, steps: Sequence["PipelineStep"]) -> "QueryBuilder":
+        step_queries: list["QueryBuilder"] = []
+        step_tables: list[StepTable] = []
+
+        for i, step in enumerate(steps):
+            try:
+                step_method: Callable[..., tuple["QueryBuilder", StepTable]] = getattr(
+                    self, step.name
+                )
+            except AttributeError:
+                raise NotImplementedError(f"[{self.DIALECT}] step {step.name} not yet implemented")
+
+            if i == 0:
+                assert step.name == "domain"
+                step_query, step_table = step_method(step=step)
+            else:
+                step_query, step_table = step_method(step=step, table=step_tables[i - 1])
+
+            step_queries.append(step_query)
+            step_table.name = f"__step_{i}__"
+            step_tables.append(step_table)
+
         query: "QueryBuilder" = self.QUERY_CLS
+        for i, step_query in enumerate(step_queries):
+            query = query.with_(step_query, step_tables[i].name)
 
-        for sub_query_alias, sub_query in self._query_infos.sub_queries.items():
-            query = query.with_(sub_query, sub_query_alias)
+        return query.from_(step_tables[-1].name).select("*")
 
-        query = query.from_(self._query_infos.from_).select(*self._query_infos.selected)
-
-        if hasattr(query.__class__, "distinct_on"):
-            query = query.distinct_on(*self._query_infos.distinct_on)
-
-        query = query.where(Criterion.all(self._query_infos.wheres))
-
-        query = query.groupby(*self._query_infos.groupbys)
-
-        for col, order in self._query_infos.orders.items():
-            query = query.orderby(col, order=order)
-
-        if self._query_infos.limit is not None:
-            query = query.limit(self._query_infos.limit)
-
-        for table, join_type, on_fields in self._query_infos.joins:
-            query = query.join(table, join_type).on_field(*on_fields)
-
-        return query
-
-    def get_query_str(self: Self) -> str:
-        query_str: str = self.get_query().get_sql()
+    def get_query_str(self: Self, *, steps: Sequence["PipelineStep"]) -> str:
+        query_str: str = self.get_query(steps=steps).get_sql()
         return query_str
 
     # All other methods implement step from https://weaverbird.toucantoco.com/docs/steps/,
     # the name of the method being the name of the step and the kwargs the rest of the params
-    def argmax(self: Self, *, column: str, groups: Sequence[str]) -> Self:
-        return self.top(rank_on=column, limit=1, sort="desc", groups=groups)
+    # def argmax(self: Self, *, column: str, groups: Sequence[str]) -> Self:
+    #     return self.top(rank_on=column, limit=1, sort="desc", groups=groups)
 
-    def argmin(self: Self, *, column: str, groups: Sequence[str]) -> Self:
-        return self.top(rank_on=column, limit=1, sort="asc", groups=groups)
+    # def argmin(self: Self, *, column: str, groups: Sequence[str]) -> Self:
+    #     return self.top(rank_on=column, limit=1, sort="asc", groups=groups)
 
-    def aggregate(
+    # def aggregate(
+    #     self: Self,
+    #     *,
+    #     on: Sequence[str],
+    #     aggregations: Sequence["Aggregation"],
+    #     keep_original_granularity: bool = False,
+    # ) -> Self:
+    #     raise NotImplementedError(f"[{self.DIALECT}] aggregate is not implemented")
+
+    def domain(
         self: Self,
         *,
-        on: Sequence[str],
-        aggregations: Sequence["Aggregation"],
-        keep_original_granularity: bool = False,
-    ) -> Self:
-        raise NotImplementedError(f"[{self.DIALECT}] aggregate is not implemented")
-
-    def domain(self: Self, *, domain: str) -> Self:
-        if self._db_schema is not None:
-            self._query_infos.from_ = getattr(self._db_schema, domain)
-        else:
-            self._query_infos.from_ = Table(domain)
+        step: "DomainStep",
+    ) -> tuple["QueryBuilder", StepTable]:
         try:
-            self.select(columns=self._tables_columns[domain])
+            selected_cols = self._tables_columns[step.domain]
         except KeyError:
-            self._query_infos.selected = ["*"]
-        return self
+            selected_cols = ["*"]
 
-    def delete(self: Self, *, columns: Sequence[str]) -> Self:
-        self._query_infos.selected = [
-            col_field for col_field in self._query_infos.selected if col_field.name not in columns
-        ]
-        return self
+        query = self.QUERY_CLS.from_(step.domain).select(*selected_cols)
+        return query, StepTable(columns=selected_cols)
+
+    # def delete(self: Self, *, columns: Sequence[str]) -> Self:
+    #     self._query_infos.selected = [
+    #         col_field for col_field in self._query_infos.selected if col_field.name not in columns
+    #     ]
+    #     return self
 
     def _get_single_condition_criterion(
-        self: Self, condition: "SingleFilterCondition"
+        self: Self, condition: "SimpleCondition", table: StepTable
     ) -> Criterion:
-        column_field: Field = getattr(self._query_infos.from_, condition["column"])
+        column_field: Field = Table(table.name)[condition.column]
 
-        match condition["operator"]:
+        match condition.operator:
             case "eq" | "ne" | "gt" | "ge" | "lt" | "le":
                 import operator
 
-                op = getattr(operator, condition["operator"])
-                return op(column_field, condition["value"])
+                op = getattr(operator, condition.operator)
+                return op(column_field, condition.value)
             case "in":
-                return column_field.isin(condition["value"])
+                return column_field.isin(condition.value)
             case "nin":
-                return column_field.notin(condition["value"])
+                return column_field.notin(condition.value)
             case "matches":
-                return column_field.regexp(condition["value"])
+                return column_field.regexp(condition.value)
             case "notmatches":
-                return column_field.regexp(condition["value"]).negate()
+                return column_field.regexp(condition.value).negate()
             case "isnull":
                 return column_field.isnull()
             case "notnull":
                 return column_field.isnotnull()
             case _:  # pragma: no cover
-                raise KeyError(f"Operator {condition['operator']!r} does not exist")
+                raise KeyError(f"Operator {condition.operator!r} does not exist")
 
-    def _get_filter_criterion(self: Self, condition: "FilterCondition") -> Criterion:
-        match tuple(condition):
-            case ("or_",):
+    def _get_filter_criterion(self: Self, condition: "Condition", table: StepTable) -> Criterion:
+        match type(condition):
+            case 1:
                 return Criterion.any(
                     (
-                        self._get_filter_criterion(condition)
-                        for condition in cast("OrFilterCondition", condition)["or_"]
+                        self._get_filter_criterion(condition, table)
+                        for condition in cast("ConditionComboOr", condition)["or_"]
                     )
                 )
-            case ("and_",):
+            case 2:
                 return Criterion.all(
                     (
-                        self._get_filter_criterion(condition)
-                        for condition in cast("AndFilterCondition", condition)["and_"]
+                        self._get_filter_criterion(condition, table)
+                        for condition in cast("ConditionComboAnd", condition)["and_"]
                     )
                 )
             case _:
                 return self._get_single_condition_criterion(
-                    cast("SingleFilterCondition", condition)
+                    cast("SimpleCondition", condition), table
                 )
 
-    def filter(self: Self, *, condition: "FilterCondition") -> Self:
-        self._query_infos.wheres.append(self._get_filter_criterion(condition))
-        return self
+    def filter(
+        self: Self, *, step: "FilterStep", table: StepTable
+    ) -> tuple["QueryBuilder", StepTable]:
+        query: "QueryBuilder" = (
+            self.QUERY_CLS.from_(table.name)
+            .select(*table.columns)
+            .where(self._get_filter_criterion(step.condition, table))
+        )
+        return query, StepTable(columns=table.columns)
 
-    def lowercase(self: Self, *, column: str) -> Self:
-        col_aliases = [c.alias or c.name for c in self._query_infos.selected]
-        col_real_names = [c.name for c in self._query_infos.selected]
-        idx = col_aliases.index(column)
-        column_field: Field = getattr(self._query_infos.from_, col_real_names[idx])
-        self._query_infos.selected[idx] = functions.Lower(column_field).as_(col_aliases[idx])
-        return self
+    # def lowercase(self: Self, *, column: str) -> Self:
+    #     col_aliases = [c.alias or c.name for c in self._query_infos.selected]
+    #     col_real_names = [c.name for c in self._query_infos.selected]
+    #     idx = col_aliases.index(column)
+    #     column_field: Field = getattr(self._query_infos.from_, col_real_names[idx])
+    #     self._query_infos.selected[idx] = functions.Lower(column_field).as_(col_aliases[idx])
+    #     return self
 
-    def rename(self: Self, *, to_rename: tuple[str, str]) -> Self:
-        for col_field in self._query_infos.selected:
-            if col_field.name == to_rename[0]:
-                col_field.alias = to_rename[1]
-        return self
+    def rename(
+        self: Self, *, step: "RenameStep", table: StepTable
+    ) -> tuple["QueryBuilder", StepTable]:
+        old_name, new_name = step.to_rename
 
-    def select(self: Self, *, columns: Sequence[str]) -> Self:
-        self._query_infos.selected = [Field(col_name) for col_name in columns]
-        return self
+        new_selected_cols: list[str] = []
+        selected_col_fields: list[Field] = []
 
-    def sort(self: Self, *, columns: Sequence["SortColumn"]) -> Self:
-        for sorted_cols in columns:
-            col_to_sort, order = sorted_cols["column"], sorted_cols["order"]
-            self._query_infos.orders[col_to_sort] = (
-                Order.desc if order.lower() == "desc" else Order.asc
+        for col_name in table.columns:
+            if col_name == old_name:
+                selected_col_fields.append(Field(name=col_name, alias=new_name))
+            else:
+                selected_col_fields.append(Field(name=col_name))
+
+        query = self.QUERY_CLS.from_(table.name).select(*selected_col_fields)
+        return query, StepTable(columns=new_selected_cols)
+
+    def select(
+        self: Self, *, step: "SelectStep", table: StepTable
+    ) -> tuple["QueryBuilder", StepTable]:
+        query = self.QUERY_CLS.from_(table.name).select(*step.columns)
+        return query, StepTable(columns=step.columns)
+
+    def sort(self: Self, *, step: "SortStep", table: StepTable) -> tuple["QueryBuilder", StepTable]:
+        query: "QueryBuilder" = self.QUERY_CLS.from_(table.name).select(*table.columns)
+
+        for column_sort in step.columns:
+            query = query.orderby(
+                column_sort.column, order=Order.desc if column_sort.order == "desc" else Order.asc
             )
-        return self
 
-    def _top_with_groups(
-        self: Self, rank_on: str, limit: int, order: Order, groups: Sequence[str]
-    ) -> None:
-        raise NotImplementedError(f"[{self.DIALECT}] top is not implemented with groups")
+        return query, StepTable(columns=table.columns)
 
-    def top(
-        self: Self,
-        *,
-        rank_on: str,
-        limit: int,
-        sort: Literal["asc", "desc"],
-        groups: Sequence[str],
-    ) -> Self:
-        order = Order.desc if sort == "desc" else Order.asc
+    # def _top_with_groups(
+    #     self: Self, rank_on: str, limit: int, order: Order, groups: Sequence[str]
+    # ) -> None:
+    #     raise NotImplementedError(f"[{self.DIALECT}] top is not implemented with groups")
 
-        if groups:
-            self._top_with_groups(rank_on, limit, order, groups)
-        else:
-            self._query_infos.orders[rank_on] = order
-            self._query_infos.limit = limit
+    # def top(
+    #     self: Self,
+    #     *,
+    #     rank_on: str,
+    #     limit: int,
+    #     sort: Literal["asc", "desc"],
+    #     groups: Sequence[str],
+    # ) -> Self:
+    #     order = Order.desc if sort == "desc" else Order.asc
 
-        return self
+    #     if groups:
+    #         self._top_with_groups(rank_on, limit, order, groups)
+    #     else:
+    #         self._query_infos.orders[rank_on] = order
+    #         self._query_infos.limit = limit
 
-    def uniquegroups(self: Self, *, on: Sequence[str]) -> Self:
-        raise NotImplementedError(f"[{self.DIALECT}] uniquegroups is not implemented")
+    #     return self
 
-    def uppercase(self: Self, *, column: str) -> Self:
-        col_aliases = [c.alias or c.name for c in self._query_infos.selected]
-        col_real_names = [c.name for c in self._query_infos.selected]
-        idx = col_aliases.index(column)
-        column_field: Field = getattr(self._query_infos.from_, col_real_names[idx])
-        self._query_infos.selected[idx] = functions.Upper(column_field).as_(col_aliases[idx])
-        return self
+    # def uniquegroups(self: Self, *, on: Sequence[str]) -> Self:
+    #     raise NotImplementedError(f"[{self.DIALECT}] uniquegroups is not implemented")
+
+    # def uppercase(self: Self, *, column: str) -> Self:
+    #     col_aliases = [c.alias or c.name for c in self._query_infos.selected]
+    #     col_real_names = [c.name for c in self._query_infos.selected]
+    #     idx = col_aliases.index(column)
+    #     column_field: Field = getattr(self._query_infos.from_, col_real_names[idx])
+    #     self._query_infos.selected[idx] = functions.Upper(column_field).as_(col_aliases[idx])
+    #     return self
 
 
 def get_aggregate_function(agg_function: "AggregationFunction") -> functions.AggregateFunction:

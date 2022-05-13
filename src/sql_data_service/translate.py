@@ -14,15 +14,8 @@ def translate_pipeline(
     db_schema: str | None = None,
 ) -> str:
     translator_cls = ALL_TRANSLATORS[sql_dialect]
-    translator = translator_cls(tables_columns=tables_columns, db_schema=db_schema)
-    for step in pipeline.steps:
-        try:
-            translator_method = getattr(translator, step.name)
-        except AttributeError:  # pragma: no cover
-            raise NotImplementedError(
-                f"step {step.name!r} is not yet implemented for {sql_dialect} translator"
-            )
-        else:
-            translator = translator_method(**step.dict(exclude={"name"}))
-
-    return translator.get_query_str()
+    translator = translator_cls(
+        tables_columns=tables_columns,
+        db_schema=db_schema,
+    )
+    return translator.get_query_str(steps=pipeline.steps)
