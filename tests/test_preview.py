@@ -837,6 +837,24 @@ ALL_TEST_TABLES = ["labels", "labels2", "logins", "logins2", "users"]
                 {"username": "spaces", "age": 7, "city": "Bourg Palette"},
             ],
         ),
+        # ~~~~~~~~~~~ REPLACE + split ~~~~~~~~~~~~~~
+        (
+            [
+                {"name": "domain", "domain": "users"},
+                {
+                    "name": "replace",
+                    "search_column": "city",
+                    "to_replace": [["Paris", "Vaurg Paris"], ["Firenze", "Naurg Firenze"]],
+                },
+                {"name": "split", "column": "city", "delimiter": "rg ", "number_cols_to_keep": 2},
+            ],
+            [
+                {"username": "Eric", "age": 30, "city_1": "Vau", "city_2": "Paris"},
+                {"username": "Chiara", "age": 31, "city_1": "Nau", "city_2": "Firenze"},
+                {"username": "Pikachu", "age": 7, "city_1": "Bou", "city_2": "Palette"},
+                {"username": "Bulbi", "age": 7, "city_1": "Bou", "city_2": "Palette"},
+            ],
+        ),
     ),
 )
 def test_get_preview_mysql(

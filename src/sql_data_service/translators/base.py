@@ -2,11 +2,14 @@ from abc import ABC
 from dataclasses import dataclass
 
 # from typing_extensions import Self
-from typing import TYPE_CHECKING, Callable, Literal, Mapping, Sequence, TypeVar
+from typing import TYPE_CHECKING, Any, Callable, Mapping, Sequence, TypeVar
 
 from pypika import Criterion, Field, Order, Query, Schema, Table, functions
+from pypika.enums import Comparator
+from pypika.terms import AnalyticFunction, BasicCriterion
 
 from sql_data_service.dialects import SQLDialect
+from sql_data_service.operators import FromDateOp, RegexOp, ToDateOp
 
 from . import ALL_TRANSLATORS
 
@@ -50,8 +53,6 @@ if TYPE_CHECKING:
     )
     from weaverbird.pipeline.steps.aggregate import AggregateFn
 
-    WeaverbirdCastType = Literal["integer", "float", "text", "date", "boolean"]
-
 
 @dataclass(kw_only=True)
 class StepTable:
@@ -59,16 +60,27 @@ class StepTable:
     name: str | None = None
 
 
+@dataclass(kw_only=True)
+class DataTypeMapping:
+    boolean: str
+    date: str
+    float: str
+    integer: str
+    text: str
+
+
 class SQLTranslator(ABC):
     DIALECT: SQLDialect
     QUERY_CLS: Query
-    DATA_TYPE_MAPPING: dict["WeaverbirdCastType", str] = {
-        "integer": "INTEGER",
-        "float": "DOUBLE",
-        "text": "TEXT",
-        "date": "DATE",
-        "boolean": "BOOLEAN",
-    }
+    DATA_TYPE_MAPPING: DataTypeMapping
+    # supported extra functions
+    SUPPORT_DISTINCT_ON: bool
+    SUPPORT_ROW_NUMBER: bool
+    SUPPORT_SPLIT_PART: bool
+    # which operators should be used
+    FROM_DATE_OP: FromDateOp
+    REGEXP_OP: RegexOp
+    TO_DATE_OP: ToDateOp
 
     def __init__(
         self: Self,
@@ -215,7 +227,7 @@ class SQLTranslator(ABC):
         query: "QueryBuilder" = self.QUERY_CLS.from_(table.name).select(
             *(c for c in table.columns if c not in step.columns),
             *(
-                functions.Cast(col_field, self.DATA_TYPE_MAPPING[step.data_type]).as_(
+                functions.Cast(col_field, getattr(self.DATA_TYPE_MAPPING, step.data_type)).as_(
                     col_field.name
                 )
                 for col_field in col_fields
@@ -277,9 +289,29 @@ class SQLTranslator(ABC):
             case "nin":
                 return column_field.notin(condition.value)
             case "matches":
-                return column_field.regexp(condition.value)
+                match self.REGEXP_OP:
+                    case RegexOp.REGEXP:
+                        return column_field.regexp(condition.value)
+                    case RegexOp.SIMILAR_TO:
+                        return BasicCriterion(
+                            SimilarToMatching.similar_to,
+                            column_field,
+                            column_field.wrap_constant(_compliant_regex(condition.value)),
+                        )
+                    case _:
+                        raise NotImplementedError(f"[{self.DIALECT}] doesn't have regexp operator")
             case "notmatches":
-                return column_field.regexp(condition.value).negate()
+                match self.REGEXP_OP:
+                    case RegexOp.REGEXP:
+                        return column_field.regexp(condition.value).negate()
+                    case RegexOp.SIMILAR_TO:
+                        return BasicCriterion(
+                            SimilarToMatching.not_similar_to,
+                            column_field,
+                            column_field.wrap_constant(_compliant_regex(condition.value)),
+                        )
+                    case _:
+                        raise NotImplementedError(f"[{self.DIALECT}] doesn't have regexp operator")
             case "isnull":
                 return column_field.isnull()
             case "notnull":
@@ -338,9 +370,18 @@ class SQLTranslator(ABC):
         self: Self, *, step: "FromdateStep", table: StepTable
     ) -> tuple["QueryBuilder", StepTable]:
         col_field: Field = Table(table.name)[step.column]
+
+        match self.FROM_DATE_OP:
+            case FromDateOp.DATE_FORMAT:
+                convert_fn = DateFormat
+            case FromDateOp.TO_CHAR:
+                convert_fn = functions.ToChar
+            case _:
+                raise NotImplementedError(f"[{self.DIALECT}] doesn't have from date operator")
+
         query: "QueryBuilder" = self.QUERY_CLS.from_(table.name).select(
             *(c for c in table.columns if c != step.column),
-            functions.ToChar(col_field, step.format).as_(step.column),
+            convert_fn(col_field, step.format).as_(step.column),
         )
         return query, StepTable(columns=table.columns)
 
@@ -416,7 +457,20 @@ class SQLTranslator(ABC):
     def split(
         self: Self, *, step: "SplitStep", table: StepTable
     ) -> tuple["QueryBuilder", StepTable]:
-        ...
+        if self.SUPPORT_SPLIT_PART:
+            col_field: Field = Table(table.name)[step.column]
+            kept_cols = [c for c in table.columns if c != step.column]
+            new_cols = [f"{step.column}_{i+1}" for i in range(step.number_cols_to_keep)]
+            query: "QueryBuilder" = self.QUERY_CLS.from_(table.name).select(
+                *kept_cols,
+                *(
+                    functions.SplitPart(col_field, step.delimiter, i + 1).as_(new_cols[i])
+                    for i in range(step.number_cols_to_keep)
+                ),
+            )
+            return query, StepTable(columns=[*kept_cols, *new_cols])
+
+        raise NotImplementedError(f"[{self.DIALECT}] split is not implemented")
 
     def substring(
         self: Self, *, step: "SubstringStep", table: StepTable
@@ -436,9 +490,16 @@ class SQLTranslator(ABC):
         col_field: Field = Table(table.name)[step.column]
 
         if step.format is not None:
-            date_selection = functions.ToDate(col_field, step.format)
+            match self.TO_DATE_OP:
+                case ToDateOp.TO_DATE:
+                    convert_fn = functions.ToDate
+                case ToDateOp.STR_TO_DATE:
+                    convert_fn = StrToDate
+                case _:
+                    raise NotImplementedError(f"[{self.DIALECT}] todate has no set operator")
+            date_selection = convert_fn(col_field, step.format)
         else:
-            date_selection = functions.Cast(col_field, self.DATA_TYPE_MAPPING["date"])
+            date_selection = functions.Cast(col_field, self.DATA_TYPE_MAPPING.date)
 
         query: "QueryBuilder" = self.QUERY_CLS.from_(table.name).select(
             *(c for c in table.columns if c != step.column),
@@ -448,9 +509,25 @@ class SQLTranslator(ABC):
 
     def top(self: Self, *, step: "TopStep", table: StepTable) -> tuple["QueryBuilder", StepTable]:
         if step.groups:
-            raise NotImplementedError(f"[{self.DIALECT}] top is not implemented with groups")
+            if self.SUPPORT_ROW_NUMBER:
+                sub_query: "QueryBuilder" = self.QUERY_CLS.from_(table.name).select(*table.columns)
 
-        query: "QueryBuilder" = self.QUERY_CLS.from_(table.name).select(*table.columns)
+                the_table = Table(table.name)
+                rank_on_field: Field = the_table[step.rank_on]
+                groups_fields: list[Field] = [the_table[group] for group in step.groups]
+                sub_query = sub_query.select(
+                    RowNumber()
+                    .over(*groups_fields)
+                    .orderby(rank_on_field, order=Order.desc if step.sort == "desc" else Order.asc)
+                )
+                query: "QueryBuilder" = self.QUERY_CLS.from_(sub_query).select(*table.columns)
+                query = query.where(Field("row_number") == step.limit)
+                return query, StepTable(columns=table.columns)
+
+            else:
+                raise NotImplementedError(f"[{self.DIALECT}] top is not implemented with groups")
+
+        query = self.QUERY_CLS.from_(table.name).select(*table.columns)
         query = query.orderby(step.rank_on, order=Order.desc if step.sort == "desc" else Order.asc)
         query = query.limit(step.limit)
         return query, StepTable(columns=table.columns)
@@ -466,7 +543,11 @@ class SQLTranslator(ABC):
     def uniquegroups(
         self: Self, *, step: "UniqueGroupsStep", table: StepTable
     ) -> tuple["QueryBuilder", StepTable]:
-        raise NotImplementedError(f"[{self.DIALECT}] uniquegroups is not implemented")
+        if self.SUPPORT_DISTINCT_ON:
+            query: "QueryBuilder" = self.QUERY_CLS.from_(table.name).select(*table.columns)
+            return query.distinct_on(*step.on), StepTable(columns=table.columns)
+        else:
+            raise NotImplementedError(f"[{self.DIALECT}] uniquegroups is not implemented")
 
     def uppercase(
         self: Self, *, step: "UppercaseStep", table: StepTable
@@ -483,3 +564,33 @@ class CountDistinct(functions.Count):  # type: ignore[misc]
     def __init__(self, param: str | Field, alias: str | None = None) -> None:
         super().__init__(param, alias)
         self._distinct = True
+
+
+class DateFormat(functions.Function):  # type: ignore[misc]
+    def __init__(self, term: str | Field, date_format: str, alias: str | None = None) -> None:
+        super().__init__("DATE_FORMAT", term, date_format, alias=alias)
+
+
+class RowNumber(AnalyticFunction):  # type: ignore[misc]
+    def __init__(self, **kwargs: Any) -> None:
+        super().__init__("ROW_NUMBER", **kwargs)
+
+
+class StrToDate(functions.Function):  # type: ignore[misc]
+    def __init__(self, term: str | Field, date_format: str, alias: str | None = None) -> None:
+        super().__init__("STR_TO_DATE", term, date_format, alias=alias)
+
+
+class SimilarToMatching(Comparator):  # type: ignore[misc]
+    similar_to = " SIMILAR TO "
+    not_similar_to = " NOT SIMILAR TO "
+
+
+def _compliant_regex(pattern: str) -> str:
+    """
+    Like LIKE, the SIMILAR TO operator succeeds only if its pattern matches the entire string;
+    this is unlike common regular expression behavior wherethe pattern
+    can match any part of the string
+    (see https://www.postgresql.org/docs/current/functions-matching.html#FUNCTIONS-SIMILARTO-REGEXP)
+    """
+    return f"%{pattern}%"
