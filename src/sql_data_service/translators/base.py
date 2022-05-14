@@ -352,13 +352,11 @@ class SQLTranslator(ABC):
     def lowercase(
         self: Self, *, step: "LowercaseStep", table: StepTable
     ) -> tuple["QueryBuilder", StepTable]:
-        col_idx = table.columns.index(step.column)
         col_field: Field = Table(table.name)[step.column]
-
-        new_cols = list(table.columns)
-        new_cols[col_idx] = functions.Lower(col_field).as_(new_cols[col_idx])
-
-        query: "QueryBuilder" = self.QUERY_CLS.from_(table.name).select(*new_cols)
+        query: "QueryBuilder" = self.QUERY_CLS.from_(table.name).select(
+            *(c for c in table.columns if c != step.column),
+            functions.Lower(col_field).as_(step.column),
+        )
         return query, StepTable(columns=table.columns)
 
     def percentage(
@@ -385,7 +383,14 @@ class SQLTranslator(ABC):
     def replace(
         self: Self, *, step: "ReplaceStep", table: StepTable
     ) -> tuple["QueryBuilder", StepTable]:
-        ...
+        col_field: Field = Table(table.name)[step.search_column]
+        query: "QueryBuilder" = self.QUERY_CLS.from_(table.name).select(
+            *(c for c in table.columns if c != step.search_column),
+            functions.Replace(col_field, step.to_replace[0], step.to_replace[1]).as_(
+                step.search_column
+            ),
+        )
+        return query, StepTable(columns=table.columns)
 
     def select(
         self: Self, *, step: "SelectStep", table: StepTable
@@ -445,13 +450,11 @@ class SQLTranslator(ABC):
     def uppercase(
         self: Self, *, step: "UppercaseStep", table: StepTable
     ) -> tuple["QueryBuilder", StepTable]:
-        col_idx = table.columns.index(step.column)
         col_field: Field = Table(table.name)[step.column]
-
-        new_cols = list(table.columns)
-        new_cols[col_idx] = functions.Upper(col_field).as_(new_cols[col_idx])
-
-        query: "QueryBuilder" = self.QUERY_CLS.from_(table.name).select(*new_cols)
+        query: "QueryBuilder" = self.QUERY_CLS.from_(table.name).select(
+            *(c for c in table.columns if c != step.column),
+            functions.Upper(col_field).as_(step.column),
+        )
         return query, StepTable(columns=table.columns)
 
 

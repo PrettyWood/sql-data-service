@@ -802,6 +802,19 @@ ALL_TEST_TABLES = ["labels", "logins", "users"]
                 {"username": "Bulbi", "age": "7", "city": "Bourg Palette"},
             ],
         ),
+        # ~~~~~~~~~~~ REPLACE ~~~~~~~~~~~~~~
+        (
+            [
+                {"name": "domain", "domain": "users"},
+                {"name": "replace", "search_column": "username", "to_replace": ["Bulbi", "Cara"]},
+            ],
+            [
+                {"username": "Eric", "age": 30, "city": "Paris"},
+                {"username": "Chiara", "age": 31, "city": "Firenze"},
+                {"username": "Pikachu", "age": 7, "city": "Bourg Palette"},
+                {"username": "Cara", "age": 7, "city": "Bourg Palette"},
+            ],
+        ),
     ),
 )
 def test_get_preview_mysql(
