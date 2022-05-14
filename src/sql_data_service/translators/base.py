@@ -21,18 +21,30 @@ if TYPE_CHECKING:
         AggregateStep,
         ArgmaxStep,
         ArgminStep,
+        CompareTextStep,
+        ConcatenateStep,
         ConvertStep,
+        CustomSqlStep,
         DeleteStep,
         DomainStep,
+        DuplicateStep,
+        FillnaStep,
         FilterStep,
         FormulaStep,
         FromdateStep,
+        IfthenelseStep,
         LowercaseStep,
+        PercentageStep,
         RenameStep,
+        ReplaceStep,
         SelectStep,
         SortStep,
+        SplitStep,
+        SubstringStep,
         TextStep,
+        ToDateStep,
         TopStep,
+        TrimStep,
         UniqueGroupsStep,
         UppercaseStep,
     )
@@ -186,6 +198,16 @@ class SQLTranslator(ABC):
             step=TopStep(rank_on=step.column, sort="asc", limit=1, groups=step.groups), table=table
         )
 
+    def comparetext(
+        self: Self, *, step: "CompareTextStep", table: StepTable
+    ) -> tuple["QueryBuilder", StepTable]:
+        ...
+
+    def concatenate(
+        self: Self, *, step: "ConcatenateStep", table: StepTable
+    ) -> tuple["QueryBuilder", StepTable]:
+        ...
+
     def convert(
         self: Self, *, step: "ConvertStep", table: StepTable
     ) -> tuple["QueryBuilder", StepTable]:
@@ -200,6 +222,12 @@ class SQLTranslator(ABC):
             ),
         )
         return query, StepTable(columns=table.columns)
+
+    def customsql(
+        self: Self, *, step: "CustomSqlStep", table: StepTable
+    ) -> tuple["QueryBuilder", StepTable]:
+        """create a custom sql step based on the current table named ##PREVIOUS_STEP## in the query"""
+        ...
 
     def delete(
         self: Self, *, step: "DeleteStep", table: StepTable
@@ -222,6 +250,16 @@ class SQLTranslator(ABC):
             Table(step.domain, schema=self._db_schema)
         ).select(*selected_cols)
         return query, StepTable(columns=selected_cols)
+
+    def duplicate(
+        self: Self, *, step: "DuplicateStep", table: StepTable
+    ) -> tuple["QueryBuilder", StepTable]:
+        ...
+
+    def fillna(
+        self: Self, *, step: "FillnaStep", table: StepTable
+    ) -> tuple["QueryBuilder", StepTable]:
+        ...
 
     def _get_single_condition_criterion(
         self: Self, condition: "SimpleCondition", table: StepTable
@@ -306,6 +344,11 @@ class SQLTranslator(ABC):
         )
         return query, StepTable(columns=table.columns)
 
+    def ifthenelse(
+        self: Self, *, step: "IfthenelseStep", table: StepTable
+    ) -> tuple["QueryBuilder", StepTable]:
+        ...
+
     def lowercase(
         self: Self, *, step: "LowercaseStep", table: StepTable
     ) -> tuple["QueryBuilder", StepTable]:
@@ -317,6 +360,11 @@ class SQLTranslator(ABC):
 
         query: "QueryBuilder" = self.QUERY_CLS.from_(table.name).select(*new_cols)
         return query, StepTable(columns=table.columns)
+
+    def percentage(
+        self: Self, *, step: "PercentageStep", table: StepTable
+    ) -> tuple["QueryBuilder", StepTable]:
+        ...
 
     def rename(
         self: Self, *, step: "RenameStep", table: StepTable
@@ -334,6 +382,11 @@ class SQLTranslator(ABC):
         query: "QueryBuilder" = self.QUERY_CLS.from_(table.name).select(*selected_col_fields)
         return query, StepTable(columns=[f.alias or f.name for f in selected_col_fields])
 
+    def replace(
+        self: Self, *, step: "ReplaceStep", table: StepTable
+    ) -> tuple["QueryBuilder", StepTable]:
+        ...
+
     def select(
         self: Self, *, step: "SelectStep", table: StepTable
     ) -> tuple["QueryBuilder", StepTable]:
@@ -350,12 +403,27 @@ class SQLTranslator(ABC):
 
         return query, StepTable(columns=table.columns)
 
+    def split(
+        self: Self, *, step: "SplitStep", table: StepTable
+    ) -> tuple["QueryBuilder", StepTable]:
+        ...
+
+    def substring(
+        self: Self, *, step: "SubstringStep", table: StepTable
+    ) -> tuple["QueryBuilder", StepTable]:
+        ...
+
     def text(self: Self, *, step: "TextStep", table: StepTable) -> tuple["QueryBuilder", StepTable]:
         from pypika.terms import ValueWrapper
 
         query: "QueryBuilder" = self.QUERY_CLS.from_(table.name).select(*table.columns)
         query = query.select(ValueWrapper(step.text).as_(step.new_column))
         return query, StepTable(columns=[*table.columns, step.new_column])
+
+    def todate(
+        self: Self, *, step: "ToDateStep", table: StepTable
+    ) -> tuple["QueryBuilder", StepTable]:
+        ...
 
     def top(self: Self, *, step: "TopStep", table: StepTable) -> tuple["QueryBuilder", StepTable]:
         if step.groups:
@@ -365,6 +433,9 @@ class SQLTranslator(ABC):
         query = query.orderby(step.rank_on, order=Order.desc if step.sort == "desc" else Order.asc)
         query = query.limit(step.limit)
         return query, StepTable(columns=table.columns)
+
+    def trim(self: Self, *, step: "TrimStep", table: StepTable) -> tuple["QueryBuilder", StepTable]:
+        ...
 
     def uniquegroups(
         self: Self, *, step: "UniqueGroupsStep", table: StepTable
