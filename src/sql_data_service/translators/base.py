@@ -440,7 +440,12 @@ class SQLTranslator(ABC):
         return query, StepTable(columns=table.columns)
 
     def trim(self: Self, *, step: "TrimStep", table: StepTable) -> tuple["QueryBuilder", StepTable]:
-        ...
+        col_fields: list[Field] = [Table(table.name)[col] for col in step.columns]
+        query: "QueryBuilder" = self.QUERY_CLS.from_(table.name).select(
+            *(c for c in table.columns if c not in step.columns),
+            *(functions.Trim(col_field).as_(col_field.name) for col_field in col_fields),
+        )
+        return query, StepTable(columns=table.columns)
 
     def uniquegroups(
         self: Self, *, step: "UniqueGroupsStep", table: StepTable
