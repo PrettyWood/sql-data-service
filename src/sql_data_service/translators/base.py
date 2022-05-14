@@ -25,6 +25,7 @@ if TYPE_CHECKING:
         DomainStep,
         FilterStep,
         FormulaStep,
+        FromdateStep,
         LowercaseStep,
         RenameStep,
         SelectStep,
@@ -269,6 +270,16 @@ class SQLTranslator(ABC):
         #   CAST("my age" AS float) + 1 / 2
         query = query.select(LiteralValue(step.formula).as_(step.new_column))
         return query, StepTable(columns=[*table.columns, step.new_column])
+
+    def fromdate(
+        self: Self, *, step: "FromdateStep", table: StepTable
+    ) -> tuple["QueryBuilder", StepTable]:
+        col_field: Field = Table(table.name)[step.column]
+        query: "QueryBuilder" = self.QUERY_CLS.from_(table.name).select(
+            *(c for c in table.columns if c != step.column),
+            functions.ToChar(col_field, step.format).as_(step.column),
+        )
+        return query, StepTable(columns=table.columns)
 
     def lowercase(
         self: Self, *, step: "LowercaseStep", table: StepTable
