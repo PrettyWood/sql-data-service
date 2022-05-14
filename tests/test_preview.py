@@ -9,7 +9,7 @@ from sql_data_service.models import SQLQueryDefinition
 
 client = TestClient(app)
 
-ALL_TEST_TABLES = ["labels", "logins", "users"]
+ALL_TEST_TABLES = ["labels", "labels2", "logins", "logins2", "users"]
 
 
 @pytest.mark.usefixtures(
@@ -904,4 +904,49 @@ def test_fromdate(sql_dialect: SQLDialect, request: pytest.FixtureRequest) -> No
         {"username": "Chiara", "login": "08/05/2021", "type": None},
         {"username": "Pikachu", "login": "01/01/2020", "type": "Electric"},
         {"username": "Bulbi", "login": "01/01/2019", "type": "Grass/Poison"},
+    ]
+
+
+@pytest.mark.usefixtures(
+    "is_mysql_ready",
+    "is_postgresql_ready",
+)
+@pytest.mark.parametrize(
+    "sql_dialect",
+    (
+        SQLDialect.MYSQL,
+        SQLDialect.POSTGRESQL,
+    ),
+)
+def test_todate(sql_dialect: SQLDialect, request: pytest.FixtureRequest) -> None:
+    sql_connection_config = request.getfixturevalue(f"{sql_dialect}_connection_config")
+
+    if sql_dialect == SQLDialect.MYSQL:
+        date_format = "%d/%m/%Y"
+    else:
+        date_format = "DD/MM/YYYY"
+
+    sql_query_definition = SQLQueryDefinition(
+        connection={
+            "dialect": sql_dialect.value,
+            "config": sql_connection_config,
+        },
+        pipeline={
+            "steps": [
+                {"name": "domain", "domain": "logins2"},
+                {"name": "todate", "column": "login_text", "format": date_format},
+            ],
+        },
+    )
+    preview_query = PreviewQuery(
+        query_def=sql_query_definition,
+        tables=ALL_TEST_TABLES,
+    )
+    response = client.post("/preview", json=preview_query.dict())
+    assert response.status_code == 200
+    assert response.json() == [
+        {"username": "Eric", "login_text": "2021-05-09", "type": None},
+        {"username": "Chiara", "login_text": "2021-05-08", "type": None},
+        {"username": "Pikachu", "login_text": "2020-01-01", "type": "Electric"},
+        {"username": "Bulbi", "login_text": "2019-01-01", "type": "Grass/Poison"},
     ]

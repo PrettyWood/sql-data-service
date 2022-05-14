@@ -428,7 +428,18 @@ class SQLTranslator(ABC):
     def todate(
         self: Self, *, step: "ToDateStep", table: StepTable
     ) -> tuple["QueryBuilder", StepTable]:
-        ...
+        col_field: Field = Table(table.name)[step.column]
+
+        if step.format is not None:
+            date_selection = functions.ToDate(col_field, step.format)
+        else:
+            date_selection = functions.Cast(col_field, self.DATA_TYPE_MAPPING["date"])
+
+        query: "QueryBuilder" = self.QUERY_CLS.from_(table.name).select(
+            *(c for c in table.columns if c != step.column),
+            date_selection.as_(col_field.name),
+        )
+        return query, StepTable(columns=table.columns)
 
     def top(self: Self, *, step: "TopStep", table: StepTable) -> tuple["QueryBuilder", StepTable]:
         if step.groups:
