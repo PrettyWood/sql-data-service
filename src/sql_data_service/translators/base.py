@@ -173,6 +173,13 @@ class SQLTranslator(ABC):
             step=TopStep(rank_on=step.column, sort="asc", limit=1, groups=step.groups), table=table
         )
 
+    def delete(
+        self: Self, *, step: "DeleteStep", table: StepTable
+    ) -> tuple["QueryBuilder", StepTable]:
+        new_columns = [c for c in table.columns if c not in step.columns]
+        query: "QueryBuilder" = self.QUERY_CLS.from_(table.name).select(*new_columns)
+        return query, StepTable(columns=new_columns)
+
     def domain(
         self: Self,
         *,
@@ -183,15 +190,10 @@ class SQLTranslator(ABC):
         except KeyError:
             selected_cols = ["*"]
 
-        query: "QueryBuilder" = self.QUERY_CLS.from_(step.domain).select(*selected_cols)
+        query: "QueryBuilder" = self.QUERY_CLS.from_(
+            Table(step.domain, schema=self._db_schema)
+        ).select(*selected_cols)
         return query, StepTable(columns=selected_cols)
-
-    def delete(
-        self: Self, *, step: "DeleteStep", table: StepTable
-    ) -> tuple["QueryBuilder", StepTable]:
-        new_columns = [c for c in table.columns if c not in step.columns]
-        query: "QueryBuilder" = self.QUERY_CLS.from_(table.name).select(*new_columns)
-        return query, StepTable(columns=new_columns)
 
     def _get_single_condition_criterion(
         self: Self, condition: "SimpleCondition", table: StepTable
