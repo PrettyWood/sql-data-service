@@ -763,6 +763,19 @@ ALL_TEST_TABLES = ["labels", "logins", "users"]
                 {"Cartel": "Cartel 1", "sumValue": 39},
             ],
         ),
+        # ~~~~~~~~~~~ TEXT ~~~~~~~~~~~~~~
+        (
+            [
+                {"name": "domain", "domain": "users"},
+                {"name": "text", "text": "Stew", "new_column": "cat"},
+            ],
+            [
+                {"username": "Eric", "age": 30, "city": "Paris", "cat": "Stew"},
+                {"username": "Chiara", "age": 31, "city": "Firenze", "cat": "Stew"},
+                {"username": "Pikachu", "age": 7, "city": "Bourg Palette", "cat": "Stew"},
+                {"username": "Bulbi", "age": 7, "city": "Bourg Palette", "cat": "Stew"},
+            ],
+        ),
     ),
 )
 def test_get_preview_mysql(

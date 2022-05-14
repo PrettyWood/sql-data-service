@@ -28,6 +28,7 @@ if TYPE_CHECKING:
         RenameStep,
         SelectStep,
         SortStep,
+        TextStep,
         TopStep,
         UniqueGroupsStep,
         UppercaseStep,
@@ -293,6 +294,13 @@ class SQLTranslator(ABC):
             )
 
         return query, StepTable(columns=table.columns)
+
+    def text(self: Self, *, step: "TextStep", table: StepTable) -> tuple["QueryBuilder", StepTable]:
+        from pypika.terms import ValueWrapper
+
+        query: "QueryBuilder" = self.QUERY_CLS.from_(table.name).select(*table.columns)
+        query = query.select(ValueWrapper(step.text).as_(step.new_column))
+        return query, StepTable(columns=[*table.columns, step.new_column])
 
     def top(self: Self, *, step: "TopStep", table: StepTable) -> tuple["QueryBuilder", StepTable]:
         if step.groups:
