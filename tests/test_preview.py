@@ -789,6 +789,19 @@ ALL_TEST_TABLES = ["labels", "logins", "users"]
                 {"username": "Bulbi", "age": 7, "city": "Bourg Palette", "result": 16},
             ],
         ),
+        # ~~~~~~~~~~~ CONVERT ~~~~~~~~~~~~~~
+        (
+            [
+                {"name": "domain", "domain": "users"},
+                {"name": "convert", "columns": ["age"], "data_type": "text"},
+            ],
+            [
+                {"username": "Eric", "age": "30", "city": "Paris"},
+                {"username": "Chiara", "age": "31", "city": "Firenze"},
+                {"username": "Pikachu", "age": "7", "city": "Bourg Palette"},
+                {"username": "Bulbi", "age": "7", "city": "Bourg Palette"},
+            ],
+        ),
     ),
 )
 def test_get_preview_mysql(

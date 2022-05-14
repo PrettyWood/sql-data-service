@@ -2,7 +2,7 @@ from abc import ABC
 from dataclasses import dataclass
 
 # from typing_extensions import Self
-from typing import TYPE_CHECKING, Callable, Mapping, Sequence, TypeVar
+from typing import TYPE_CHECKING, Callable, Literal, Mapping, Sequence, TypeVar
 
 from pypika import Criterion, Field, Order, Query, Schema, Table, functions
 
@@ -21,6 +21,7 @@ if TYPE_CHECKING:
         AggregateStep,
         ArgmaxStep,
         ArgminStep,
+        ConvertStep,
         DeleteStep,
         DomainStep,
         FilterStep,
@@ -37,6 +38,8 @@ if TYPE_CHECKING:
     )
     from weaverbird.pipeline.steps.aggregate import AggregateFn
 
+    WeaverbirdCastType = Literal["integer", "float", "text", "date", "boolean"]
+
 
 @dataclass(kw_only=True)
 class StepTable:
@@ -47,6 +50,13 @@ class StepTable:
 class SQLTranslator(ABC):
     DIALECT: SQLDialect
     QUERY_CLS: Query
+    DATA_TYPE_MAPPING: dict["WeaverbirdCastType", str] = {
+        "integer": "INTEGER",
+        "float": "DOUBLE",
+        "text": "TEXT",
+        "date": "DATE",
+        "boolean": "BOOLEAN",
+    }
 
     def __init__(
         self: Self,
@@ -175,6 +185,21 @@ class SQLTranslator(ABC):
         return self.top(
             step=TopStep(rank_on=step.column, sort="asc", limit=1, groups=step.groups), table=table
         )
+
+    def convert(
+        self: Self, *, step: "ConvertStep", table: StepTable
+    ) -> tuple["QueryBuilder", StepTable]:
+        col_fields: list[Field] = [Table(table.name)[col] for col in step.columns]
+        query: "QueryBuilder" = self.QUERY_CLS.from_(table.name).select(
+            *(c for c in table.columns if c not in step.columns),
+            *(
+                functions.Cast(col_field, self.DATA_TYPE_MAPPING[step.data_type]).as_(
+                    col_field.name
+                )
+                for col_field in col_fields
+            ),
+        )
+        return query, StepTable(columns=table.columns)
 
     def delete(
         self: Self, *, step: "DeleteStep", table: StepTable

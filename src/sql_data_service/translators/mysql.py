@@ -13,10 +13,20 @@ if TYPE_CHECKING:
     from pypika.queries import QueryBuilder
     from weaverbird.pipeline.steps import FromdateStep
 
+    from .base import WeaverbirdCastType
+
 
 class MySQLTranslator(SQLTranslator):
     DIALECT = SQLDialect.MYSQL
     QUERY_CLS = MySQLQuery
+    # https://www.w3schools.com/sql/func_mysql_cast.asp
+    DATA_TYPE_MAPPING: dict["WeaverbirdCastType", str] = {
+        "integer": "UNSIGNED",
+        "float": "DECIMAL",
+        "text": "CHAR",
+        "date": "DATE",
+        "boolean": "SIGNED",
+    }
 
     def fromdate(
         self: Self, *, step: "FromdateStep", table: StepTable
