@@ -475,7 +475,14 @@ class SQLTranslator(ABC):
     def substring(
         self: Self, *, step: "SubstringStep", table: StepTable
     ) -> tuple["QueryBuilder", StepTable]:
-        ...
+        query: "QueryBuilder" = self.QUERY_CLS.from_(table.name).select(*table.columns)
+        col_field: Field = Table(table.name)[step.column]
+        query = query.select(
+            functions.Substring(col_field, step.start_index, step.end_index - step.start_index).as_(
+                step.new_column_name
+            )
+        )
+        return query, StepTable(columns=[*table.columns, step.new_column_name])
 
     def text(self: Self, *, step: "TextStep", table: StepTable) -> tuple["QueryBuilder", StepTable]:
         from pypika.terms import ValueWrapper

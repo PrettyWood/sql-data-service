@@ -855,6 +855,25 @@ ALL_TEST_TABLES = ["labels", "labels2", "logins", "logins2", "users"]
                 {"username": "Bulbi", "age": 7, "city_1": "Bou", "city_2": "Palette"},
             ],
         ),
+        # ~~~~~~~~~~~ SUBSTRING ~~~~~~~~~~~~~~
+        (
+            [
+                {"name": "domain", "domain": "users"},
+                {
+                    "name": "substring",
+                    "column": "city",
+                    "start_index": 2,
+                    "end_index": 8,
+                    "new_column_name": "subcity",
+                },
+            ],
+            [
+                {"username": "Eric", "age": 30, "city": "Paris", "subcity": "aris"},
+                {"username": "Chiara", "age": 31, "city": "Firenze", "subcity": "irenze"},
+                {"username": "Pikachu", "age": 7, "city": "Bourg Palette", "subcity": "ourg P"},
+                {"username": "Bulbi", "age": 7, "city": "Bourg Palette", "subcity": "ourg P"},
+            ],
+        ),
     ),
 )
 def test_get_preview_mysql(
