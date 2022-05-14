@@ -24,6 +24,7 @@ if TYPE_CHECKING:
         DeleteStep,
         DomainStep,
         FilterStep,
+        FormulaStep,
         LowercaseStep,
         RenameStep,
         SelectStep,
@@ -250,6 +251,24 @@ class SQLTranslator(ABC):
         query: "QueryBuilder" = self.QUERY_CLS.from_(table.name).select(*table.columns)
         query = query.where(self._get_filter_criterion(step.condition, table))
         return query, StepTable(columns=table.columns)
+
+    def formula(
+        self: Self, *, step: "FormulaStep", table: StepTable
+    ) -> tuple["QueryBuilder", StepTable]:
+        from pypika.terms import LiteralValue
+
+        query: "QueryBuilder" = self.QUERY_CLS.from_(table.name).select(*table.columns)
+        # TODO: support
+        # - float casting with divisions
+        # - whitespaces in column names
+        # - strings
+        # To do that we probably need to parse the formula with tokens
+        # In the end we should be able to translate:
+        #   [my age] + 1 / 2
+        # into
+        #   CAST("my age" AS float) + 1 / 2
+        query = query.select(LiteralValue(step.formula).as_(step.new_column))
+        return query, StepTable(columns=[*table.columns, step.new_column])
 
     def lowercase(
         self: Self, *, step: "LowercaseStep", table: StepTable

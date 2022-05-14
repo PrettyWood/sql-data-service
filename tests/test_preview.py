@@ -776,6 +776,19 @@ ALL_TEST_TABLES = ["labels", "logins", "users"]
                 {"username": "Bulbi", "age": 7, "city": "Bourg Palette", "cat": "Stew"},
             ],
         ),
+        # ~~~~~~~~~~~ FORMULA (without spaces and strings) ~~~~~~~~~~~~~~
+        (
+            [
+                {"name": "domain", "domain": "users"},
+                {"name": "formula", "formula": "(age + 1) * 2", "new_column": "result"},
+            ],
+            [
+                {"username": "Eric", "age": 30, "city": "Paris", "result": 62},
+                {"username": "Chiara", "age": 31, "city": "Firenze", "result": 64},
+                {"username": "Pikachu", "age": 7, "city": "Bourg Palette", "result": 16},
+                {"username": "Bulbi", "age": 7, "city": "Bourg Palette", "result": 16},
+            ],
+        ),
     ),
 )
 def test_get_preview_mysql(
