@@ -384,12 +384,17 @@ class SQLTranslator(ABC):
         self: Self, *, step: "ReplaceStep", table: StepTable
     ) -> tuple["QueryBuilder", StepTable]:
         col_field: Field = Table(table.name)[step.search_column]
+
+        # Do a nested `replace` to replace many values on the same column
+        replaced_col = col_field
+        for old_name, new_name in step.to_replace:
+            replaced_col = functions.Replace(replaced_col, old_name, new_name)
+
         query: "QueryBuilder" = self.QUERY_CLS.from_(table.name).select(
             *(c for c in table.columns if c != step.search_column),
-            functions.Replace(col_field, step.to_replace[0], step.to_replace[1]).as_(
-                step.search_column
-            ),
+            replaced_col.as_(step.search_column),
         )
+
         return query, StepTable(columns=table.columns)
 
     def select(

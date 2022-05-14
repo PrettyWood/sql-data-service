@@ -806,10 +806,14 @@ ALL_TEST_TABLES = ["labels", "labels2", "logins", "logins2", "users"]
         (
             [
                 {"name": "domain", "domain": "users"},
-                {"name": "replace", "search_column": "username", "to_replace": ["Bulbi", "Cara"]},
+                {
+                    "name": "replace",
+                    "search_column": "username",
+                    "to_replace": [["Eric", "Michel"], ["Bulbi", "Cara"]],
+                },
             ],
             [
-                {"username": "Eric", "age": 30, "city": "Paris"},
+                {"username": "Michel", "age": 30, "city": "Paris"},
                 {"username": "Chiara", "age": 31, "city": "Firenze"},
                 {"username": "Pikachu", "age": 7, "city": "Bourg Palette"},
                 {"username": "Cara", "age": 7, "city": "Bourg Palette"},
@@ -822,7 +826,7 @@ ALL_TEST_TABLES = ["labels", "labels2", "logins", "logins2", "users"]
                 {
                     "name": "replace",
                     "search_column": "username",
-                    "to_replace": ["Bulbi", "  spaces  "],
+                    "to_replace": [["Bulbi", "  spaces  "]],
                 },
                 {"name": "trim", "columns": ["username"]},
             ],
