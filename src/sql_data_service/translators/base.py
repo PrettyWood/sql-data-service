@@ -4,7 +4,7 @@ from dataclasses import dataclass
 # from typing_extensions import Self
 from typing import TYPE_CHECKING, Any, Callable, Mapping, Sequence, TypeVar
 
-from pypika import Criterion, Field, Order, Query, Schema, Table, functions
+from pypika import Case, Criterion, Field, Order, Query, Schema, Table, functions
 from pypika.enums import Comparator
 from pypika.terms import AnalyticFunction, BasicCriterion
 
@@ -213,7 +213,14 @@ class SQLTranslator(ABC):
     def comparetext(
         self: Self, *, step: "CompareTextStep", table: StepTable
     ) -> tuple["QueryBuilder", StepTable]:
-        ...
+        query: "QueryBuilder" = self.QUERY_CLS.from_(table.name).select(
+            *table.columns,
+            Case()
+            .when(Table(table.name)[step.str_col_1] == Table(table.name)[step.str_col_2], True)
+            .else_(False)
+            .as_(step.new_column_name),
+        )
+        return query, StepTable(columns=[*table.columns, step.new_column_name])
 
     def concatenate(
         self: Self, *, step: "ConcatenateStep", table: StepTable

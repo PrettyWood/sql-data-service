@@ -874,6 +874,55 @@ ALL_TEST_TABLES = ["labels", "labels2", "logins", "logins2", "users"]
                 {"username": "Bulbi", "age": 7, "city": "Bourg Palette", "subcity": "ourg P"},
             ],
         ),
+        # ~~~~~~~~~~~ COMPARETEXT ~~~~~~~~~~~~~~
+        (
+            [
+                {"name": "domain", "domain": "users"},
+                {
+                    "name": "substring",
+                    "column": "username",
+                    "start_index": 1,
+                    "end_index": 6,
+                    "new_column_name": "subuser",
+                },
+                {
+                    "name": "comparetext",
+                    "new_column_name": "compared",
+                    "str_col_1": "username",
+                    "str_col_2": "subuser",
+                },
+            ],
+            [
+                {
+                    "username": "Eric",
+                    "age": 30,
+                    "city": "Paris",
+                    "subuser": "Eric",
+                    "compared": True,
+                },
+                {
+                    "username": "Chiara",
+                    "age": 31,
+                    "city": "Firenze",
+                    "subuser": "Chiar",
+                    "compared": False,
+                },
+                {
+                    "username": "Pikachu",
+                    "age": 7,
+                    "city": "Bourg Palette",
+                    "subuser": "Pikac",
+                    "compared": False,
+                },
+                {
+                    "username": "Bulbi",
+                    "age": 7,
+                    "city": "Bourg Palette",
+                    "subuser": "Bulbi",
+                    "compared": True,
+                },
+            ],
+        ),
     ),
 )
 def test_get_preview_mysql(
