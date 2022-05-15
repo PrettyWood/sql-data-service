@@ -285,7 +285,10 @@ class SQLTranslator(ABC):
     def duplicate(
         self: Self, *, step: "DuplicateStep", table: StepTable
     ) -> tuple["QueryBuilder", StepTable]:
-        ...
+        query: "QueryBuilder" = self.QUERY_CLS.from_(table.name).select(
+            *table.columns, Table(table.name)[step.column].as_(step.new_column_name)
+        )
+        return query, StepTable(columns=[*table.columns, step.new_column_name])
 
     def fillna(
         self: Self, *, step: "FillnaStep", table: StepTable

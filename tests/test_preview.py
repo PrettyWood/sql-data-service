@@ -956,6 +956,19 @@ ALL_TEST_TABLES = ["labels", "labels2", "logins", "logins2", "users"]
                 },
             ],
         ),
+        # ~~~~~~~~~~~ DUPLICATE ~~~~~~~~~~~~~~
+        (
+            [
+                {"name": "domain", "domain": "users"},
+                {"name": "duplicate", "column": "age", "new_column_name": "age2"},
+            ],
+            [
+                {"username": "Eric", "age": 30, "city": "Paris", "age2": 30},
+                {"username": "Chiara", "age": 31, "city": "Firenze", "age2": 31},
+                {"username": "Pikachu", "age": 7, "city": "Bourg Palette", "age2": 7},
+                {"username": "Bulbi", "age": 7, "city": "Bourg Palette", "age2": 7},
+            ],
+        ),
     ),
 )
 def test_get_preview_mysql(
