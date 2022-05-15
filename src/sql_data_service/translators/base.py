@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Any, Callable, Mapping, Sequence, TypeVar, cas
 
 from pypika import AliasedQuery, Case, Criterion, Field, Order, Query, Schema, Table, functions
 from pypika.enums import Comparator
-from pypika.terms import AnalyticFunction, BasicCriterion
+from pypika.terms import AnalyticFunction, BasicCriterion, LiteralValue
 
 from sql_data_service.dialects import SQLDialect
 from sql_data_service.operators import FromDateOp, RegexOp, ToDateOp
@@ -393,8 +393,6 @@ class SQLTranslator(ABC):
     def formula(
         self: Self, *, step: "FormulaStep", table: StepTable
     ) -> tuple["QueryBuilder", StepTable]:
-        from pypika.terms import LiteralValue
-
         query: "QueryBuilder" = self.QUERY_CLS.from_(table.name).select(*table.columns)
         # TODO: support
         # - float casting with divisions
@@ -436,9 +434,18 @@ class SQLTranslator(ABC):
         table: StepTable,
         case: Case,
     ) -> Case:
+        import json
+
         from weaverbird.pipeline.steps.ifthenelse import IfThenElse
 
-        case = case.when(self._get_filter_criterion(if_, table), then_)
+        try:
+            # if the value is a string
+            then_value = json.loads(then_)
+            case = case.when(self._get_filter_criterion(if_, table), then_value)
+        except (json.JSONDecodeError, TypeError):
+            # the value is a formula
+            then_value = then_
+            case = case.when(self._get_filter_criterion(if_, table), LiteralValue(then_value))
 
         if isinstance(else_, IfThenElse):
             return self._build_ifthenelse_case(
@@ -449,7 +456,14 @@ class SQLTranslator(ABC):
                 case=case,
             )
         else:
-            return case.else_(else_)
+            try:
+                # the value is a string
+                else_value = json.loads(else_)
+                return case.else_(else_value)
+            except (json.JSONDecodeError, TypeError):
+                # the value is a formula
+                else_value = else_
+                return case.else_(LiteralValue(else_value))
 
     def ifthenelse(
         self: Self, *, step: "IfthenelseStep", table: StepTable
