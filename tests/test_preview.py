@@ -969,6 +969,19 @@ ALL_TEST_TABLES = ["labels", "labels2", "logins", "logins2", "users"]
                 {"username": "Bulbi", "age": 7, "city": "Bourg Palette", "age2": 7},
             ],
         ),
+        # ~~~~~~~~~~~ FILLNA ~~~~~~~~~~~~~~
+        (
+            [
+                {"name": "domain", "domain": "logins"},
+                {"name": "fillna", "columns": ["type"], "value": "unknown"},
+            ],
+            [
+                {"username": "Eric", "login": "2021-05-09", "type": "unknown"},
+                {"username": "Chiara", "login": "2021-05-08", "type": "unknown"},
+                {"username": "Pikachu", "login": "2020-01-01", "type": "Electric"},
+                {"username": "Bulbi", "login": "2019-01-01", "type": "Grass/Poison"},
+            ],
+        ),
     ),
 )
 def test_get_preview_mysql(

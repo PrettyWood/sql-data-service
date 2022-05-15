@@ -293,7 +293,15 @@ class SQLTranslator(ABC):
     def fillna(
         self: Self, *, step: "FillnaStep", table: StepTable
     ) -> tuple["QueryBuilder", StepTable]:
-        ...
+        the_table = Table(table.name)
+        query: "QueryBuilder" = self.QUERY_CLS.from_(table.name).select(
+            *(c for c in table.columns if c not in step.columns),
+            *(
+                functions.Coalesce(the_table[col_name], step.value).as_(col_name)
+                for col_name in step.columns
+            ),
+        )
+        return query, StepTable(columns=table.columns)
 
     def _get_single_condition_criterion(
         self: Self, condition: "SimpleCondition", table: StepTable
