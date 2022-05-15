@@ -923,6 +923,39 @@ ALL_TEST_TABLES = ["labels", "labels2", "logins", "logins2", "users"]
                 },
             ],
         ),
+        # ~~~~~~~~~~~ CONCATENATE ~~~~~~~~~~~~~~
+        (
+            [
+                {"name": "domain", "domain": "users"},
+                {
+                    "name": "concatenate",
+                    "columns": ["city", "age", "username"],
+                    "separator": " -> ",
+                    "new_column_name": "all",
+                },
+            ],
+            [
+                {"username": "Eric", "age": 30, "city": "Paris", "all": "Paris -> 30 -> Eric"},
+                {
+                    "username": "Chiara",
+                    "age": 31,
+                    "city": "Firenze",
+                    "all": "Firenze -> 31 -> Chiara",
+                },
+                {
+                    "username": "Pikachu",
+                    "age": 7,
+                    "city": "Bourg Palette",
+                    "all": "Bourg Palette -> 7 -> Pikachu",
+                },
+                {
+                    "username": "Bulbi",
+                    "age": 7,
+                    "city": "Bourg Palette",
+                    "all": "Bourg Palette -> 7 -> Bulbi",
+                },
+            ],
+        ),
     ),
 )
 def test_get_preview_mysql(

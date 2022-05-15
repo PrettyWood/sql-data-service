@@ -225,7 +225,19 @@ class SQLTranslator(ABC):
     def concatenate(
         self: Self, *, step: "ConcatenateStep", table: StepTable
     ) -> tuple["QueryBuilder", StepTable]:
-        ...
+        # from step.columns = ["city", "age", "username"], step.separator = " -> "
+        # create [Field("city"), " -> ", Field("age"), " -> ", Field("username")]
+        the_table = Table(table.name)
+        tokens = [the_table[step.columns[0]]]
+        for col in step.columns[1:]:
+            tokens.append(step.separator)
+            tokens.append(the_table[col])
+
+        query: "QueryBuilder" = self.QUERY_CLS.from_(table.name).select(
+            *table.columns,
+            functions.Concat(*tokens).as_(step.new_column_name),
+        )
+        return query, StepTable(columns=[*table.columns, step.new_column_name])
 
     def convert(
         self: Self, *, step: "ConvertStep", table: StepTable
