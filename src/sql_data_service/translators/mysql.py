@@ -1,9 +1,19 @@
+from typing import TYPE_CHECKING, TypeVar
+
+from pypika import Field, Table, functions
 from pypika.dialects import MySQLQuery
 
 from sql_data_service.dialects import SQLDialect
 from sql_data_service.operators import FromDateOp, RegexOp, ToDateOp
 
-from .base import DataTypeMapping, SQLTranslator
+from .base import DataTypeMapping, SQLTranslator, StepTable
+
+Self = TypeVar("Self", bound="MySQLTranslator")
+
+
+if TYPE_CHECKING:
+    from pypika.queries import QueryBuilder
+    from weaverbird.pipeline.steps import SplitStep
 
 
 class MySQLTranslator(SQLTranslator):
@@ -22,5 +32,31 @@ class MySQLTranslator(SQLTranslator):
     REGEXP_OP = RegexOp.REGEXP
     TO_DATE_OP = ToDateOp.STR_TO_DATE
 
+    def split(
+        self: Self, *, step: "SplitStep", table: StepTable
+    ) -> tuple["QueryBuilder", StepTable]:
+        col_field: Field = Table(table.name)[step.column]
+        kept_cols = [c for c in table.columns if c != step.column]
+        new_cols = [f"{step.column}_{i+1}" for i in range(step.number_cols_to_keep)]
+
+        query: "QueryBuilder" = self.QUERY_CLS.from_(table.name).select(
+            *kept_cols,
+            *(
+                # https://stackoverflow.com/a/32500349
+                SubstringIndex(
+                    SubstringIndex(col_field, step.delimiter, i + 1), step.delimiter, -1
+                ).as_(new_cols[i])
+                for i in range(step.number_cols_to_keep)
+            ),
+        )
+        return query, StepTable(columns=[*kept_cols, *new_cols])
+
 
 SQLTranslator.register(MySQLTranslator)
+
+
+class SubstringIndex(functions.Function):  # type: ignore[misc]
+    def __init__(
+        self, term: str | Field, delimiter: str, count: int, alias: str | None = None
+    ) -> None:
+        super().__init__("SUBSTRING_INDEX", term, delimiter, count, alias=alias)
