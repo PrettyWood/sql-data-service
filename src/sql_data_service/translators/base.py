@@ -433,7 +433,7 @@ class SQLTranslator(ABC):
     def percentage(
         self: Self, *, step: "PercentageStep", table: StepTable
     ) -> tuple["QueryBuilder", StepTable]:
-        ...
+        raise NotImplementedError(f"[{self.DIALECT}] percentage is not implemented")
 
     def rename(
         self: Self, *, step: "RenameStep", table: StepTable
