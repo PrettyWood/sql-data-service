@@ -74,7 +74,6 @@ class SQLTranslator(ABC):
     QUERY_CLS: Query
     DATA_TYPE_MAPPING: DataTypeMapping
     # supported extra functions
-    SUPPORT_DISTINCT_ON: bool
     SUPPORT_ROW_NUMBER: bool
     SUPPORT_SPLIT_PART: bool
     # which operators should be used
@@ -175,20 +174,26 @@ class SQLTranslator(ABC):
 
             all_agg_col_names: list[str] = [x for agg in step.aggregations for x in agg.new_columns]
 
-            query = self.QUERY_CLS.from_(current_query).select(*table.columns)
-            query = query.select(
-                *(Field(agg_col, table=agg_query) for agg_col in all_agg_col_names)
+            query = (
+                self.QUERY_CLS.from_(current_query)
+                .select(
+                    *table.columns,
+                    *(Field(agg_col, table=agg_query) for agg_col in all_agg_col_names),
+                )
+                .left_join(agg_query)
+                .on_field(*step.on)
             )
-            query = query.left_join(agg_query).on_field(*step.on)
             selected_col_names = [*table.columns, *all_agg_col_names]
 
         else:
             selected_cols: list[str | Field] = [*step.on, *agg_selected]
             selected_col_names = [*step.on, *(f.alias for f in agg_selected)]
-            query = self.QUERY_CLS.from_(table.name).select(*selected_cols)
-            query = query.groupby(*step.on)
-            for col in step.on:
-                query = query.orderby(col, order=Order.asc)
+            query = (
+                self.QUERY_CLS.from_(table.name)
+                .select(*selected_cols)
+                .groupby(*step.on)
+                .orderby(*step.on, order=Order.asc)
+            )
 
         return query, StepTable(columns=selected_col_names)
 
@@ -386,8 +391,11 @@ class SQLTranslator(ABC):
     def filter(
         self: Self, *, step: "FilterStep", table: StepTable
     ) -> tuple["QueryBuilder", StepTable]:
-        query: "QueryBuilder" = self.QUERY_CLS.from_(table.name).select(*table.columns)
-        query = query.where(self._get_filter_criterion(step.condition, table))
+        query: "QueryBuilder" = (
+            self.QUERY_CLS.from_(table.name)
+            .select(*table.columns)
+            .where(self._get_filter_criterion(step.condition, table))
+        )
         return query, StepTable(columns=table.columns)
 
     def formula(
@@ -562,20 +570,21 @@ class SQLTranslator(ABC):
     def substring(
         self: Self, *, step: "SubstringStep", table: StepTable
     ) -> tuple["QueryBuilder", StepTable]:
-        query: "QueryBuilder" = self.QUERY_CLS.from_(table.name).select(*table.columns)
         col_field: Field = Table(table.name)[step.column]
-        query = query.select(
+        query: "QueryBuilder" = self.QUERY_CLS.from_(table.name).select(
+            *table.columns,
             functions.Substring(col_field, step.start_index, step.end_index - step.start_index).as_(
                 step.new_column_name
-            )
+            ),
         )
         return query, StepTable(columns=[*table.columns, step.new_column_name])
 
     def text(self: Self, *, step: "TextStep", table: StepTable) -> tuple["QueryBuilder", StepTable]:
         from pypika.terms import ValueWrapper
 
-        query: "QueryBuilder" = self.QUERY_CLS.from_(table.name).select(*table.columns)
-        query = query.select(ValueWrapper(step.text).as_(step.new_column))
+        query: "QueryBuilder" = self.QUERY_CLS.from_(table.name).select(
+            *table.columns, ValueWrapper(step.text).as_(step.new_column)
+        )
         return query, StepTable(columns=[*table.columns, step.new_column])
 
     def todate(
@@ -614,16 +623,22 @@ class SQLTranslator(ABC):
                     .over(*groups_fields)
                     .orderby(rank_on_field, order=Order.desc if step.sort == "desc" else Order.asc)
                 )
-                query: "QueryBuilder" = self.QUERY_CLS.from_(sub_query).select(*table.columns)
-                query = query.where(Field("row_number") == step.limit)
+                query: "QueryBuilder" = (
+                    self.QUERY_CLS.from_(sub_query)
+                    .select(*table.columns)
+                    .where(Field("row_number") == step.limit)
+                )
                 return query, StepTable(columns=table.columns)
 
             else:
                 raise NotImplementedError(f"[{self.DIALECT}] top is not implemented with groups")
 
-        query = self.QUERY_CLS.from_(table.name).select(*table.columns)
-        query = query.orderby(step.rank_on, order=Order.desc if step.sort == "desc" else Order.asc)
-        query = query.limit(step.limit)
+        query = (
+            self.QUERY_CLS.from_(table.name)
+            .select(*table.columns)
+            .orderby(step.rank_on, order=Order.desc if step.sort == "desc" else Order.asc)
+            .limit(step.limit)
+        )
         return query, StepTable(columns=table.columns)
 
     def trim(self: Self, *, step: "TrimStep", table: StepTable) -> tuple["QueryBuilder", StepTable]:
@@ -637,11 +652,12 @@ class SQLTranslator(ABC):
     def uniquegroups(
         self: Self, *, step: "UniqueGroupsStep", table: StepTable
     ) -> tuple["QueryBuilder", StepTable]:
-        if self.SUPPORT_DISTINCT_ON:
-            query: "QueryBuilder" = self.QUERY_CLS.from_(table.name).select(*table.columns)
-            return query.distinct_on(*step.on), StepTable(columns=table.columns)
-        else:
-            raise NotImplementedError(f"[{self.DIALECT}] uniquegroups is not implemented")
+        from weaverbird.pipeline.steps import AggregateStep
+
+        return self.aggregate(
+            step=AggregateStep(on=step.on, aggregations=[], keep_original_granularity=False),
+            table=table,
+        )
 
     def uppercase(
         self: Self, *, step: "UppercaseStep", table: StepTable

@@ -413,10 +413,10 @@ ALL_TEST_TABLES = ["labels", "labels2", "logins", "logins2", "users"]
                 {"name": "uniquegroups", "on": ["Label", "Cartel"]},
             ],
             [
-                {"Label": "Label 1", "Cartel": "Cartel 1", "Value": 13},
-                {"Label": "Label 1", "Cartel": "Cartel 2", "Value": 1},
-                {"Label": "Label 2", "Cartel": "Cartel 1", "Value": 6},
-                {"Label": "Label 3", "Cartel": "Cartel 1", "Value": 20},
+                {"Label": "Label 1", "Cartel": "Cartel 1"},
+                {"Label": "Label 1", "Cartel": "Cartel 2"},
+                {"Label": "Label 2", "Cartel": "Cartel 1"},
+                {"Label": "Label 3", "Cartel": "Cartel 1"},
             ],
         ),
         # ~~~~~~~~~~~ AGGREGATE (avg) ~~~~~~~~~~~~~~
@@ -501,98 +501,150 @@ ALL_TEST_TABLES = ["labels", "labels2", "logins", "logins2", "users"]
                 {"city": "Paris", "countDistinctAge": 1},
             ],
         ),
-        # # ~~~~~~~~~~~ AGGREGATE (first) ~~~~~~~~~~~~~~
-        # (
-        #     [
-        #         {"name": "domain", "domain": "users"},
-        #         {
-        #             "name": "aggregate",
-        #             "on": ["city"],
-        #             "aggregations": [
-        #                 {
-        #                     "new_columns": ["firstUsername"],
-        #                     "agg_function": "first",
-        #                     "columns": ["username"],
-        #                 }
-        #             ],
-        #         },
-        #     ],
-        #     [
-        #         {"firstUsername": "Eric", "city": "Paris"},
-        #         {"firstUsername": "Chiara", "city": "Firenze"},
-        #         {"firstUsername": "Pikachu", "city": "Bourg Palette"},
-        #     ],
-        # ),
-        # (
-        #     [
-        #         {"name": "domain", "domain": "users"},
-        #         {
-        #             "name": "aggregate",
-        #             "on": ["city"],
-        #             "aggregations": [
-        #                 {
-        #                     "new_columns": ["firstUsername"],
-        #                     "agg_function": "first",
-        #                     "columns": ["username"],
-        #                 }
-        #             ],
-        #             "keep_original_granularity": True,
-        #         },
-        #     ],
-        #     [
-        #         {"username": "Eric", "age": 30, "city": "Paris", "firstUsername": "Eric"},
-        #         {"username": "Chiara", "age": 31, "city": "Firenze", "firstUsername": "Chiara"},
-        #         {
-        #             "username": "Pikachu",
-        #             "age": 7,
-        #             "city": "Bourg Palette",
-        #             "firstUsername": "Pikachu",
-        #         },
-        #         {
-        #             "username": "Bulbi",
-        #             "age": 7,
-        #             "city": "Bourg Palette",
-        #             "firstUsername": "Pikachu",
-        #         },
-        #     ],
-        # ),
-        # # ~~~~~~~~~~~ AGGREGATE (last) ~~~~~~~~~~~~~~
-        # (
-        #     [
-        #         {"name": "domain", "domain": "users"},
-        #         {
-        #             "name": "aggregate",
-        #             "on": ["city"],
-        #             "aggregations": [
-        #                 {"new_columns": ["lastUsername"], "agg_function": "last", "columns": ["username"]}
-        #             ],
-        #         },
-        #     ],
-        #     [
-        #         {"lastUsername": "Eric", "city": "Paris"},
-        #         {"lastUsername": "Chiara", "city": "Firenze"},
-        #         {"lastUsername": "Bulbi", "city": "Bourg Palette"},
-        #     ],
-        # ),
-        # (
-        #     [
-        #         {"name": "domain", "domain": "users"},
-        #         {
-        #             "name": "aggregate",
-        #             "on": ["city"],
-        #             "aggregations": [
-        #                 {"new_columns": ["lastUsername"], "agg_function": "last", "columns": ["username"]}
-        #             ],
-        #             "keep_original_granularity": True,
-        #         },
-        #     ],
-        #     [
-        #         {"username": "Eric", "age": 30, "city": "Paris", "lastUsername": "Eric"},
-        #         {"username": "Chiara", "age": 31, "city": "Firenze", "lastUsername": "Chiara"},
-        #         {"username": "Pikachu", "age": 7, "city": "Bourg Palette", "lastUsername": "Bulbi"},
-        #         {"username": "Bulbi", "age": 7, "city": "Bourg Palette", "lastUsername": "Bulbi"},
-        #     ],
-        # ),
+        # ~~~~~~~~~~~ AGGREGATE (first) ~~~~~~~~~~~~~~
+        (
+            [
+                {"name": "domain", "domain": "users"},
+                {
+                    "name": "aggregate",
+                    "on": ["city"],
+                    "aggregations": [
+                        {
+                            "new_columns": ["countAge"],
+                            "agg_function": "count",
+                            "columns": ["age"],
+                        }
+                    ],
+                },
+            ],
+            [
+                {"city": "Bourg Palette", "countAge": 2},
+                {"city": "Firenze", "countAge": 1},
+                {"city": "Paris", "countAge": 1},
+            ],
+        ),
+        # ~~~~~~~~~~~ AGGREGATE (count distinct) ~~~~~~~~~~~~~~
+        (
+            [
+                {"name": "domain", "domain": "users"},
+                {
+                    "name": "aggregate",
+                    "on": ["city"],
+                    "aggregations": [
+                        {
+                            "new_columns": ["countDistinctAge"],
+                            "agg_function": "count distinct",
+                            "columns": ["age"],
+                        }
+                    ],
+                },
+            ],
+            [
+                {"city": "Bourg Palette", "countDistinctAge": 1},
+                {"city": "Firenze", "countDistinctAge": 1},
+                {"city": "Paris", "countDistinctAge": 1},
+            ],
+        ),
+        # ~~~~~~~~~~~ AGGREGATE (first) ~~~~~~~~~~~~~~
+        (
+            [
+                {"name": "domain", "domain": "users"},
+                {
+                    "name": "aggregate",
+                    "on": ["city"],
+                    "aggregations": [
+                        {
+                            "new_columns": ["firstUsername"],
+                            "agg_function": "first",
+                            "columns": ["username"],
+                        }
+                    ],
+                },
+            ],
+            [
+                {"firstUsername": "Eric", "city": "Paris"},
+                {"firstUsername": "Chiara", "city": "Firenze"},
+                {"firstUsername": "Pikachu", "city": "Bourg Palette"},
+            ],
+        ),
+        (
+            [
+                {"name": "domain", "domain": "users"},
+                {
+                    "name": "aggregate",
+                    "on": ["city"],
+                    "aggregations": [
+                        {
+                            "new_columns": ["firstUsername"],
+                            "agg_function": "first",
+                            "columns": ["username"],
+                        }
+                    ],
+                    "keep_original_granularity": True,
+                },
+            ],
+            [
+                {"username": "Eric", "age": 30, "city": "Paris", "firstUsername": "Eric"},
+                {"username": "Chiara", "age": 31, "city": "Firenze", "firstUsername": "Chiara"},
+                {
+                    "username": "Pikachu",
+                    "age": 7,
+                    "city": "Bourg Palette",
+                    "firstUsername": "Pikachu",
+                },
+                {
+                    "username": "Bulbi",
+                    "age": 7,
+                    "city": "Bourg Palette",
+                    "firstUsername": "Pikachu",
+                },
+            ],
+        ),
+        # ~~~~~~~~~~~ AGGREGATE (last) ~~~~~~~~~~~~~~
+        (
+            [
+                {"name": "domain", "domain": "users"},
+                {
+                    "name": "aggregate",
+                    "on": ["city"],
+                    "aggregations": [
+                        {
+                            "new_columns": ["lastUsername"],
+                            "agg_function": "last",
+                            "columns": ["username"],
+                        }
+                    ],
+                },
+            ],
+            [
+                {"lastUsername": "Eric", "city": "Paris"},
+                {"lastUsername": "Chiara", "city": "Firenze"},
+                {"lastUsername": "Bulbi", "city": "Bourg Palette"},
+            ],
+        ),
+        (
+            [
+                {"name": "domain", "domain": "users"},
+                {
+                    "name": "aggregate",
+                    "on": ["city"],
+                    "aggregations": [
+                        {
+                            "new_columns": ["lastUsername"],
+                            "agg_function": "last",
+                            "columns": ["username"],
+                        }
+                    ],
+                    "keep_original_granularity": True,
+                },
+            ],
+            [
+                {"username": "Eric", "age": 30, "city": "Paris", "lastUsername": "Eric"},
+                {"username": "Chiara", "age": 31, "city": "Firenze", "lastUsername": "Chiara"},
+                {"username": "Pikachu", "age": 7, "city": "Bourg Palette", "lastUsername": "Bulbi"},
+                {"username": "Bulbi", "age": 7, "city": "Bourg Palette", "lastUsername": "Bulbi"},
+            ],
+        ),
         # ~~~~~~~~~~~ AGGREGATE (max) ~~~~~~~~~~~~~~
         (
             [
@@ -1070,7 +1122,7 @@ ALL_TEST_TABLES = ["labels", "labels2", "logins", "logins2", "users"]
         ),
     ),
 )
-def test_get_preview_mysql(
+def test_get_preview(
     sql_dialect: SQLDialect,
     pipeline_steps: list[dict[str, str]],
     expected_res: list[dict[str, Any]],

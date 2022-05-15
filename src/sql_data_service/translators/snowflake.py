@@ -16,7 +16,6 @@ class SnowflakeTranslator(SQLTranslator):
         integer="INTEGER",
         text="TEXT",
     )
-    SUPPORT_DISTINCT_ON = False
     SUPPORT_ROW_NUMBER = True
     SUPPORT_SPLIT_PART = True
     FROM_DATE_OP = FromDateOp.TO_CHAR

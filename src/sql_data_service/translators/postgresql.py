@@ -16,7 +16,6 @@ class PostgreSQLTranslator(SQLTranslator):
         integer="INTEGER",
         text="TEXT",
     )
-    SUPPORT_DISTINCT_ON = True
     SUPPORT_ROW_NUMBER = True
     SUPPORT_SPLIT_PART = True
     FROM_DATE_OP = FromDateOp.TO_CHAR

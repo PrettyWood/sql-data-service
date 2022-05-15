@@ -16,7 +16,6 @@ class MySQLTranslator(SQLTranslator):
         integer="UNSIGNED",
         text="CHAR",
     )
-    SUPPORT_DISTINCT_ON = False
     SUPPORT_ROW_NUMBER = False
     SUPPORT_SPLIT_PART = False
     FROM_DATE_OP = FromDateOp.DATE_FORMAT
