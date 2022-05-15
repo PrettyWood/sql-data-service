@@ -341,7 +341,13 @@ class SQLTranslator(ABC):
                         return column_field.regexp(condition.value)
                     case RegexOp.SIMILAR_TO:
                         return BasicCriterion(
-                            SimilarToMatching.similar_to,
+                            RegexpMatching.similar_to,
+                            column_field,
+                            column_field.wrap_constant(_compliant_regex(condition.value)),
+                        )
+                    case RegexOp.CONTAINS:
+                        return BasicCriterion(
+                            RegexpMatching.contains,
                             column_field,
                             column_field.wrap_constant(_compliant_regex(condition.value)),
                         )
@@ -353,7 +359,13 @@ class SQLTranslator(ABC):
                         return column_field.regexp(condition.value).negate()
                     case RegexOp.SIMILAR_TO:
                         return BasicCriterion(
-                            SimilarToMatching.not_similar_to,
+                            RegexpMatching.not_similar_to,
+                            column_field,
+                            column_field.wrap_constant(_compliant_regex(condition.value)),
+                        )
+                    case RegexOp.CONTAINS:
+                        return BasicCriterion(
+                            RegexpMatching.not_contains,
                             column_field,
                             column_field.wrap_constant(_compliant_regex(condition.value)),
                         )
@@ -598,6 +610,8 @@ class SQLTranslator(ABC):
                     convert_fn = functions.ToDate
                 case ToDateOp.STR_TO_DATE:
                     convert_fn = StrToDate
+                case ToDateOp.PARSE_DATE:
+                    convert_fn = ParseDate
                 case _:
                     raise NotImplementedError(f"[{self.DIALECT}] todate has no set operator")
             date_selection = convert_fn(col_field, step.format)
@@ -691,9 +705,16 @@ class StrToDate(functions.Function):  # type: ignore[misc]
         super().__init__("STR_TO_DATE", term, date_format, alias=alias)
 
 
-class SimilarToMatching(Comparator):  # type: ignore[misc]
+class ParseDate(functions.Function):  # type: ignore[misc]
+    def __init__(self, term: str | Field, date_format: str, alias: str | None = None) -> None:
+        super().__init__("PARSE_DATE", term, date_format, alias=alias)
+
+
+class RegexpMatching(Comparator):  # type: ignore[misc]
     similar_to = " SIMILAR TO "
     not_similar_to = " NOT SIMILAR TO "
+    contains = " CONTAINS "
+    not_contains = " NOT CONTAINS "
 
 
 def _compliant_regex(pattern: str) -> str:
