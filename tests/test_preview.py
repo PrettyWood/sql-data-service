@@ -982,6 +982,20 @@ ALL_TEST_TABLES = ["labels", "labels2", "logins", "logins2", "users"]
                 {"username": "Bulbi", "login": "2019-01-01", "type": "Grass/Poison"},
             ],
         ),
+        # ~~~~~~~~~~~ CUSTOMSQL ~~~~~~~~~~~~~~
+        (
+            [
+                {"name": "domain", "domain": "logins"},
+                {
+                    "name": "customsql",
+                    "query": "SELECT username, type FROM ##PREVIOUS_STEP## WHERE type IS NOT NULL",
+                },
+            ],
+            [
+                {"username": "Pikachu", "type": "Electric"},
+                {"username": "Bulbi", "type": "Grass/Poison"},
+            ],
+        ),
     ),
 )
 def test_get_preview_mysql(

@@ -2,9 +2,9 @@ from abc import ABC
 from dataclasses import dataclass
 
 # from typing_extensions import Self
-from typing import TYPE_CHECKING, Any, Callable, Mapping, Sequence, TypeVar
+from typing import TYPE_CHECKING, Any, Callable, Mapping, Sequence, TypeVar, cast
 
-from pypika import Case, Criterion, Field, Order, Query, Schema, Table, functions
+from pypika import AliasedQuery, Case, Criterion, Field, Order, Query, Schema, Table, functions
 from pypika.enums import Comparator
 from pypika.terms import AnalyticFunction, BasicCriterion
 
@@ -258,7 +258,19 @@ class SQLTranslator(ABC):
         self: Self, *, step: "CustomSqlStep", table: StepTable
     ) -> tuple["QueryBuilder", StepTable]:
         """create a custom sql step based on the current table named ##PREVIOUS_STEP## in the query"""
-        ...
+
+        class CustomQuery(AliasedQuery):  # type: ignore[misc]
+            def get_sql(self, **kwargs: Any) -> str:
+                return cast(str, self.query)
+
+        custom_query = CustomQuery(
+            name=f"custom_from_{table.name}",
+            query=step.query.replace("##PREVIOUS_STEP##", table.name),
+        )
+
+        # we now have no way to know which columns remain
+        # without actually executing the query
+        return custom_query, StepTable(columns=["*"])
 
     def delete(
         self: Self, *, step: "DeleteStep", table: StepTable
