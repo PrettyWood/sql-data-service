@@ -996,6 +996,29 @@ ALL_TEST_TABLES = ["labels", "labels2", "logins", "logins2", "users"]
                 {"username": "Bulbi", "type": "Grass/Poison"},
             ],
         ),
+        # ~~~~~~~~~~~ IF THEN ELSE ~~~~~~~~~~~~~~
+        (
+            [
+                {"name": "domain", "domain": "users"},
+                {
+                    "name": "ifthenelse",
+                    "new_column": "ageCategory",
+                    "if": {"column": "age", "operator": "gt", "value": 30},
+                    "then": "adult",
+                    "else": {
+                        "if": {"column": "age", "operator": "gt", "value": 18},
+                        "then": "young adult",
+                        "else": "child",
+                    },
+                },
+            ],
+            [
+                {"username": "Eric", "age": 30, "city": "Paris", "ageCategory": "young adult"},
+                {"username": "Chiara", "age": 31, "city": "Firenze", "ageCategory": "adult"},
+                {"username": "Pikachu", "age": 7, "city": "Bourg Palette", "ageCategory": "child"},
+                {"username": "Bulbi", "age": 7, "city": "Bourg Palette", "ageCategory": "child"},
+            ],
+        ),
     ),
 )
 def test_get_preview_mysql(

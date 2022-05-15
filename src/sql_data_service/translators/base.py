@@ -427,10 +427,41 @@ class SQLTranslator(ABC):
         )
         return query, StepTable(columns=table.columns)
 
+    def _build_ifthenelse_case(
+        self,
+        *,
+        if_: "Condition",
+        then_: Any,
+        else_: "Condition" | Any,
+        table: StepTable,
+        case: Case,
+    ) -> Case:
+        from weaverbird.pipeline.steps.ifthenelse import IfThenElse
+
+        case = case.when(self._get_filter_criterion(if_, table), then_)
+
+        if isinstance(else_, IfThenElse):
+            return self._build_ifthenelse_case(
+                if_=else_.condition,
+                then_=else_.then,
+                else_=else_.else_value,
+                table=table,
+                case=case,
+            )
+        else:
+            return case.else_(else_)
+
     def ifthenelse(
         self: Self, *, step: "IfthenelseStep", table: StepTable
     ) -> tuple["QueryBuilder", StepTable]:
-        ...
+        query: "QueryBuilder" = self.QUERY_CLS.from_(table.name).select(
+            *table.columns,
+            self._build_ifthenelse_case(
+                if_=step.condition, then_=step.then, else_=step.else_value, table=table, case=Case()
+            ).as_(step.new_column),
+        )
+
+        return query, StepTable(columns=[*table.columns, step.new_column])
 
     def lowercase(
         self: Self, *, step: "LowercaseStep", table: StepTable
