@@ -66,7 +66,7 @@ ALL_TEST_TABLES = ["labels", "labels2", "logins", "logins2", "users"]
             [
                 {"name": "domain", "domain": "users"},
                 {"name": "select", "columns": ["username", "age"]},
-                {"name": "rename", "to_rename": ["username", "first name"]},
+                {"name": "rename", "to_rename": [["username", "first name"]]},
             ],
             [
                 {"first name": "Eric", "age": 30},
@@ -320,7 +320,7 @@ ALL_TEST_TABLES = ["labels", "labels2", "logins", "logins2", "users"]
         (
             [
                 {"name": "domain", "domain": "users"},
-                {"name": "rename", "to_rename": ["username", "first name"]},
+                {"name": "rename", "to_rename": [["username", "first name"]]},
                 {"name": "uppercase", "column": "first name"},
             ],
             [
@@ -346,7 +346,7 @@ ALL_TEST_TABLES = ["labels", "labels2", "logins", "logins2", "users"]
         (
             [
                 {"name": "domain", "domain": "users"},
-                {"name": "rename", "to_rename": ["username", "first name"]},
+                {"name": "rename", "to_rename": [["username", "first name"]]},
                 {"name": "lowercase", "column": "first name"},
             ],
             [

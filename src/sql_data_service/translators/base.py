@@ -515,13 +515,13 @@ class SQLTranslator(ABC):
     def rename(
         self: Self, *, step: "RenameStep", table: StepTable
     ) -> tuple["QueryBuilder", StepTable]:
-        old_name, new_name = step.to_rename
+        new_names_mapping: dict[str, str] = dict(step.to_rename)
 
         selected_col_fields: list[Field] = []
 
         for col_name in table.columns:
-            if col_name == old_name:
-                selected_col_fields.append(Field(name=col_name, alias=new_name))
+            if col_name in new_names_mapping:
+                selected_col_fields.append(Field(name=col_name, alias=new_names_mapping[col_name]))
             else:
                 selected_col_fields.append(Field(name=col_name))
 
