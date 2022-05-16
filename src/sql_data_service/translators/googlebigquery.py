@@ -1,12 +1,18 @@
 from enum import Enum
-from typing import Any
+from typing import TYPE_CHECKING, Any, TypeVar
 
-from pypika.queries import Query, QueryBuilder
+from pypika import Criterion, Field, Query, Table, functions
+from pypika.queries import QueryBuilder
 
 from sql_data_service.dialects import SQLDialect
 from sql_data_service.operators import FromDateOp, RegexOp, ToDateOp
 
-from .base import DataTypeMapping, SQLTranslator
+from .base import DataTypeMapping, SQLTranslator, StepTable
+
+Self = TypeVar("Self", bound="GoogleBigQueryTranslator")
+
+if TYPE_CHECKING:
+    from weaverbird.pipeline.conditions import SimpleCondition
 
 
 class ExtraDialects(Enum):
@@ -46,5 +52,27 @@ class GoogleBigQueryTranslator(SQLTranslator):
     REGEXP_OP = RegexOp.CONTAINS
     TO_DATE_OP = ToDateOp.PARSE_DATE
 
+    def _get_single_condition_criterion(
+        self: Self, condition: "SimpleCondition", table: StepTable
+    ) -> Criterion:
+        column_field: Field = Table(table.name)[condition.column]
+
+        match condition.operator:
+            case "from":
+                return functions.Cast(column_field, "datetime") >= ParseDatetime(
+                    "%FT%T", condition.value
+                )
+            case "until":
+                return functions.Cast(column_field, "datetime") <= ParseDatetime(
+                    "%FT%T", condition.value
+                )
+
+        return super()._get_single_condition_criterion(condition, table)
+
 
 SQLTranslator.register(GoogleBigQueryTranslator)
+
+
+class ParseDatetime(functions.Function):  # type: ignore[misc]
+    def __init__(self, format: str, term: str | Field, alias: str | None = None) -> None:
+        super().__init__("parse_datetime", format, term, alias=alias)
