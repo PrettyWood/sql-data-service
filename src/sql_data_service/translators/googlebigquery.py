@@ -1,4 +1,7 @@
-from pypika.dialects import RedshiftQuery
+from enum import Enum
+from typing import Any
+
+from pypika.queries import Query, QueryBuilder
 
 from sql_data_service.dialects import SQLDialect
 from sql_data_service.operators import FromDateOp, RegexOp, ToDateOp
@@ -6,9 +9,30 @@ from sql_data_service.operators import FromDateOp, RegexOp, ToDateOp
 from .base import DataTypeMapping, SQLTranslator
 
 
+class ExtraDialects(Enum):
+    GOOGLE_BIG_QUERY = "googlebigquery"
+
+
+class GoogleBigQueryQuery(Query):  # type: ignore[misc]
+    @classmethod
+    def _builder(cls, **kwargs: Any) -> "GoogleBigQueryQueryBuilder":
+        return GoogleBigQueryQueryBuilder(**kwargs)
+
+
+class GoogleBigQueryQueryBuilder(QueryBuilder):  # type: ignore[misc]
+    QUOTE_CHAR = "`"
+    SECONDARY_QUOTE_CHAR = "'"
+    ALIAS_QUOTE_CHAR = None
+    QUERY_ALIAS_QUOTE_CHAR = None
+    QUERY_CLS = GoogleBigQueryQuery
+
+    def __init__(self, **kwargs: Any) -> None:
+        super().__init__(dialect=ExtraDialects.GOOGLE_BIG_QUERY, **kwargs)
+
+
 class GoogleBigQueryTranslator(SQLTranslator):
     DIALECT = SQLDialect.GOOGLEBIGQUERY
-    QUERY_CLS = RedshiftQuery
+    QUERY_CLS = GoogleBigQueryQuery
     DATA_TYPE_MAPPING = DataTypeMapping(
         boolean="BOOLEAN",
         date="DATE",
