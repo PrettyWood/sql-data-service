@@ -375,6 +375,10 @@ class SQLTranslator(ABC):
                 return column_field.isnull()
             case "notnull":
                 return column_field.isnotnull()
+            case "from":
+                return column_field <= condition.value
+            case "until":
+                return column_field >= condition.value
             case _:  # pragma: no cover
                 raise KeyError(f"Operator {condition.operator!r} does not exist")
 
