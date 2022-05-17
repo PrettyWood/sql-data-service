@@ -570,16 +570,15 @@ class SQLTranslator(ABC):
     ) -> tuple["QueryBuilder", StepTable]:
         if self.SUPPORT_SPLIT_PART:
             col_field: Field = Table(table.name)[step.column]
-            kept_cols = [c for c in table.columns if c != step.column]
             new_cols = [f"{step.column}_{i+1}" for i in range(step.number_cols_to_keep)]
             query: "QueryBuilder" = self.QUERY_CLS.from_(table.name).select(
-                *kept_cols,
+                *table.columns,
                 *(
                     functions.SplitPart(col_field, step.delimiter, i + 1).as_(new_cols[i])
                     for i in range(step.number_cols_to_keep)
                 ),
             )
-            return query, StepTable(columns=[*kept_cols, *new_cols])
+            return query, StepTable(columns=[*table.columns, *new_cols])
 
         raise NotImplementedError(f"[{self.DIALECT}] split is not implemented")
 

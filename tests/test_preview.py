@@ -901,10 +901,34 @@ ALL_TEST_TABLES = ["labels", "labels2", "logins", "logins2", "users"]
                 {"name": "split", "column": "city", "delimiter": "rg ", "number_cols_to_keep": 2},
             ],
             [
-                {"username": "Eric", "age": 30, "city_1": "Vau", "city_2": "Paris"},
-                {"username": "Chiara", "age": 31, "city_1": "Nau", "city_2": "Firenze"},
-                {"username": "Pikachu", "age": 7, "city_1": "Bou", "city_2": "Palette"},
-                {"username": "Bulbi", "age": 7, "city_1": "Bou", "city_2": "Palette"},
+                {
+                    "username": "Eric",
+                    "age": 30,
+                    "city": "Vaurg Paris",
+                    "city_1": "Vau",
+                    "city_2": "Paris",
+                },
+                {
+                    "username": "Chiara",
+                    "age": 31,
+                    "city": "Naurg Firenze",
+                    "city_1": "Nau",
+                    "city_2": "Firenze",
+                },
+                {
+                    "username": "Pikachu",
+                    "age": 7,
+                    "city": "Bourg Palette",
+                    "city_1": "Bou",
+                    "city_2": "Palette",
+                },
+                {
+                    "username": "Bulbi",
+                    "age": 7,
+                    "city": "Bourg Palette",
+                    "city_1": "Bou",
+                    "city_2": "Palette",
+                },
             ],
         ),
         # ~~~~~~~~~~~ SUBSTRING ~~~~~~~~~~~~~~
